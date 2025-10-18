@@ -1,3 +1,4 @@
+Codebase.txt
 backend/.gitignore
 backend/bun.lock
 backend/index.js
