@@ -1,12 +1,13 @@
 // src/screens/LoginScreen.js
 import React, { useContext, useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import apiClient from "../api/client";
 import StyledButton from "../components/StyledButton";
 import StyledInput from "../components/StyledInput";
 import { AuthContext } from "../context/AuthContext";
 import { COLORS } from "../theme";
+import Snackbar from '../components/Snackbar';
 
 // The navigation prop is passed down from the Stack Navigator
 const LoginScreen = ({ navigation }) => {
@@ -24,12 +25,14 @@ const LoginScreen = ({ navigation }) => {
 			const response = await apiClient.post("/auth/login", { email, password });
 			signIn(response.data.token);
 		} catch (_error) {
-			Alert.alert("Login Failed", "Invalid credentials. Please try again.");
+			setSnack({ visible: true, message: 'Invalid credentials. Please try again.' });
 		} finally {
 			// 3. Set loading to false when the process finishes
 			setIsLoading(false);
 		}
 	};
+
+	const [snack, setSnack] = useState({ visible: false, message: '' });
 
 	return (
 		<SafeAreaView style={styles.container}>
@@ -58,6 +61,7 @@ const LoginScreen = ({ navigation }) => {
 			<TouchableOpacity onPress={() => navigation.navigate("Register")}>
 				<Text style={styles.linkText}>Don't have an account? Sign Up</Text>
 			</TouchableOpacity>
+			<Snackbar message={snack.message} visible={snack.visible} />
 		</SafeAreaView>
 	);
 };

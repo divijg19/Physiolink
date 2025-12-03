@@ -1,0 +1,36 @@
+name: CI (Bun)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    name: Backend tests (bun)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun
+          key: ${{ runner.os }}-bun-${{ hashFiles('backend/package.json') }}
+
+      - name: Install backend dependencies (bun)
+        working-directory: ./backend
+        run: bun install
+
+      - name: Run backend tests (Vitest via bunx)
+        working-directory: ./backend
+        run: |
+          bunx vitest --config=vitest.config.cjs --run

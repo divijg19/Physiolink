@@ -5,22 +5,20 @@ import {
     Text,
     StyleSheet,
     ActivityIndicator,
-    Alert,
     FlatList,
 } from "react-native";
+import Avatar from '../components/Avatar';
 import { SafeAreaView } from "react-native-safe-area-context";
 import apiClient from "../api/client";
 import { Calendar } from 'react-native-calendars';
 import { AuthContext } from "../context/AuthContext";
-import { COLORS } from "../theme";
+import { COLORS, SPACING, FONT } from "../theme";
 import StyledButton from "../components/StyledButton";
 import ScreenHeader from "../components/ScreenHeader";
+import Snackbar from '../components/Snackbar';
+import { formatTime as utilFormatTime, formatDateLong } from '../utils/date';
 
-// Re-using our date/time formatters from MyScheduleScreen
-const formatTime = (timeString) => {
-    const options = { hour: "numeric", minute: "2-digit" };
-    return new Date(timeString).toLocaleTimeString(undefined, options);
-};
+const formatTime = utilFormatTime;
 
 const TherapistDetailScreen = ({ route, navigation }) => {
     const { therapistId } = route.params;
@@ -29,22 +27,38 @@ const TherapistDetailScreen = ({ route, navigation }) => {
     const [selectedDay, setSelectedDay] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [bookingSlotId, setBookingSlotId] = useState(null); // To show loading on a specific button
+    const [refreshing, setRefreshing] = useState(false);
+    const [snack, setSnack] = useState({ visible: false, message: '' });
+    const [reviews, setReviews] = useState([]);
+    const [myRating, setMyRating] = useState('5');
+    const [myComment, setMyComment] = useState('');
+    const [canReview, setCanReview] = useState(false);
 
     useEffect(() => {
         const fetchDetails = async () => {
             try {
-                // Fetch both therapist profile and availability in parallel
-                const [therapistsRes, availabilityRes] = await Promise.all([
-                    apiClient.get("/therapists"),
-                    apiClient.get(`/appointments/availability/${therapistId}`),
-                ]);
+                const res = await apiClient.get(`/therapists/${therapistId}`);
+                setTherapist(res.data);
+                setAvailability(res.data.availableSlots || []);
+                // fetch reviews
+                const rev = await apiClient.get(`/reviews/${therapistId}`);
+                setReviews(rev.data || []);
 
-                const foundTherapist = therapistsRes.data.find((t) => t._id === therapistId);
-                setTherapist(foundTherapist);
-                setAvailability(availabilityRes.data);
+                // determine if current user (patient) can review: must have a confirmed appointment
+                if (userRole !== 'pt') {
+                    try {
+                        const apps = await apiClient.get('/appointments/me');
+                        const myApps = apps.data || [];
+                        const hadConfirmed = myApps.some(a => (a.pt?._id || a.pt)?.toString() === therapistId && a.status === 'confirmed');
+                        setCanReview(!!hadConfirmed);
+                    } catch (err) {
+                        // ignore — we'll hide the form
+                        setCanReview(false);
+                    }
+                }
             } catch (error) {
                 console.error("Failed to fetch details:", error);
-                Alert.alert("Error", "Could not load therapist details.");
+                setSnack({ visible: true, message: 'Could not load therapist details.' });
             } finally {
                 setIsLoading(false);
             }
@@ -58,28 +72,39 @@ const TherapistDetailScreen = ({ route, navigation }) => {
         setBookingSlotId(slotId); // Show loading spinner on the pressed button
         try {
             await apiClient.put(`/appointments/${slotId}/book`);
-            Alert.alert(
-                "Success!",
-                "Your appointment has been booked. The therapist will confirm shortly.",
-                [
-                    {
-                        text: "OK",
-                        onPress: () => {
-                            // Navigate to the tab navigator's Schedule screen. The AppStack nests either
-                            // 'PatientMain' or 'TherapistMain' depending on role. We route accordingly.
-                            const parent =
-                                userRole === "pt" ? "TherapistMain" : "PatientMain";
-                            navigation.navigate(parent, { screen: "Schedule" });
-                        },
-                    },
-                ],
-            );
+            // Remove the booked slot from the local availability list so UI updates immediately
+            setAvailability(prev => prev.filter(s => s._id !== slotId));
+            setSnack({ visible: true, message: 'Booked — therapist will confirm shortly.' });
+            setTimeout(() => {
+                const parent = userRole === "pt" ? "TherapistMain" : "PatientMain";
+                navigation.navigate(parent, { screen: "Schedule" });
+            }, 900);
         } catch (error) {
-            const errorMsg =
-                error.response?.data?.msg || "This slot could not be booked.";
-            Alert.alert("Booking Failed", errorMsg);
+            const status = error.response?.status;
+            const errorMsg = error.response?.data?.msg || "This slot could not be booked.";
+            if (status === 409) {
+                setSnack({ visible: true, message: "Slot taken — refreshing availability." });
+                setTimeout(() => refreshAvailability(), 800);
+            } else if (status === 404) {
+                setSnack({ visible: true, message: "Slot not found — refreshing availability." });
+                setTimeout(() => refreshAvailability(), 800);
+            } else {
+                setSnack({ visible: true, message: errorMsg || 'Booking failed.' });
+            }
         } finally {
             setBookingSlotId(null);
+        }
+    };
+
+    const refreshAvailability = async () => {
+        setRefreshing(true);
+        try {
+            const res = await apiClient.get(`/therapists/${therapistId}`);
+            setAvailability(res.data.availableSlots || []);
+        } catch (err) {
+            console.error('Failed to refresh availability', err);
+        } finally {
+            setRefreshing(false);
         }
     };
 
@@ -113,19 +138,71 @@ const TherapistDetailScreen = ({ route, navigation }) => {
                         <Text style={styles.name}>
                             {therapist.profile.firstName} {therapist.profile.lastName}
                         </Text>
+                        <Avatar uri={therapist.profile.profileImageUrl} name={`${therapist.profile.firstName} ${therapist.profile.lastName}`} size={96} />
                         <Text style={styles.specialty}>{therapist.profile.specialty}</Text>
-                        {/* Static rating for MVP */}
-                        <Text style={styles.rating}>⭐ 4.5</Text>
+                        {/* Show rating from profile if present */}
+                        <Text style={styles.rating}>
+                            ⭐ {therapist.profile?.rating?.toFixed(1) || 'N/A'}{' '}
+                            {therapist.reviewCount ? `• ${therapist.reviewCount} ${therapist.reviewCount === 1 ? 'review' : 'reviews'}` : '• No reviews'}
+                        </Text>
                         {/* Calendar to select a day */}
                         <Calendar
                             onDayPress={(day) => setSelectedDay(day.dateString)}
                             markedDates={selectedDay ? { [selectedDay]: { selected: true } } : {}}
-                            style={{ marginVertical: 10 }}
+                            style={{ marginVertical: SPACING.sm }}
                         />
-                        <View style={styles.infoBox}>
+                        <View style={[styles.infoBox, { padding: SPACING.md }]}>
                             <Text style={styles.bio}>
                                 {therapist.profile.bio || "No biography provided."}
                             </Text>
+                            {therapist.profile.credentials ? (
+                                <Text style={{ marginTop: 8, fontFamily: 'Poppins_400Regular' }}>
+                                    Credentials: {therapist.profile.credentials}
+                                </Text>
+                            ) : null}
+                            {therapist.profile.location ? (
+                                <Text style={{ marginTop: 8, fontFamily: 'Poppins_400Regular' }}>
+                                    Location: {therapist.profile.location}
+                                </Text>
+                            ) : null}
+                            <View style={{ marginTop: 12 }}>
+                                <Text style={{ fontFamily: 'Poppins_600SemiBold' }}>Reviews</Text>
+                                {reviews.length === 0 ? (
+                                    <Text style={{ color: COLORS.gray }}>No reviews yet.</Text>
+                                ) : (
+                                    reviews.slice(0, 3).map(r => (
+                                        <View key={r._id} style={{ marginTop: 8 }}>
+                                            <Text style={{ fontFamily: 'Poppins_600SemiBold' }}>{r.patient?.profile?.firstName || 'Patient'} • ⭐ {r.rating}</Text>
+                                            {r.comment ? <Text style={{ fontFamily: 'Poppins_400Regular' }}>{r.comment}</Text> : null}
+                                        </View>
+                                    ))
+                                )}
+                            </View>
+                            {userRole !== 'pt' && canReview && (
+                                <View style={{ marginTop: 12 }}>
+                                    <Text style={{ fontFamily: 'Poppins_600SemiBold' }}>Leave a review</Text>
+                                    <View style={{ flexDirection: 'row', marginTop: 8, alignItems: 'center' }}>
+                                        <Text style={{ marginRight: 8 }}>Rating:</Text>
+                                        <StyledInput value={myRating} onChangeText={setMyRating} style={{ width: 60 }} />
+                                    </View>
+                                    <StyledInput placeholder="Comment (optional)" value={myComment} onChangeText={setMyComment} multiline />
+                                    <StyledButton title="Submit Review" onPress={async () => {
+                                        try {
+                                            const payload = { therapistId, rating: Number(myRating), comment: myComment };
+                                            await apiClient.post('/reviews', payload);
+                                            setSnack({ visible: true, message: 'Thank you — review submitted.' });
+                                            // refresh reviews and therapist rating
+                                            const rev = await apiClient.get(`/reviews/${therapistId}`);
+                                            setReviews(rev.data || []);
+                                            const t = await apiClient.get(`/therapists/${therapistId}`);
+                                            setTherapist(t.data);
+                                        } catch (err) {
+                                            console.error('Failed to submit review', err);
+                                            setSnack({ visible: true, message: 'Could not submit review.' });
+                                        }
+                                    }} />
+                                </View>
+                            )}
                         </View>
                         <ScreenHeader title="Available Slots" />
                     </>
@@ -144,6 +221,7 @@ const TherapistDetailScreen = ({ route, navigation }) => {
                 }
                 contentContainerStyle={{ paddingHorizontal: 20 }}
             />
+            <Snackbar message={snack.message} visible={snack.visible} />
         </SafeAreaView>
     );
 };

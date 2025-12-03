@@ -1,4 +1,5 @@
-gitopenapi: 3.1.0
+openapi: 3.1.0
+
 info:
   title: Physiolink API
   version: 0.1.0

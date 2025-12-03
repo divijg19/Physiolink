@@ -1,6 +1,6 @@
 // src/screens/RegisterScreen.js
 import React, { useState, useContext } from "react";
-import { View, Text, StyleSheet, Alert, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 // ====================================================================
 // THE FIX: Import SafeAreaView from the correct library
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,6 +10,7 @@ import StyledButton from "../components/StyledButton";
 import { COLORS } from "../theme";
 import apiClient from "../api/client";
 import { AuthContext } from "../context/AuthContext";
+import Snackbar from '../components/Snackbar';
 
 const RegisterScreen = ({ navigation }) => {
 	const [email, setEmail] = useState("");
@@ -18,12 +19,14 @@ const RegisterScreen = ({ navigation }) => {
 	const [isLoading, setIsLoading] = useState(false);
 	const { signIn } = useContext(AuthContext);
 
+	const [snack, setSnack] = useState({ visible: false, message: '' });
+
 	const handleRegister = async () => {
 		if (!email || !password || !confirmPassword) {
-			return Alert.alert("Missing Fields", "Please fill out all fields.");
+			return setSnack({ visible: true, message: 'Please fill out all fields.' });
 		}
 		if (password !== confirmPassword) {
-			return Alert.alert("Password Mismatch", "The passwords do not match.");
+			return setSnack({ visible: true, message: 'The passwords do not match.' });
 		}
 
 		setIsLoading(true);
@@ -43,11 +46,12 @@ const RegisterScreen = ({ navigation }) => {
 		} catch (error) {
 			const errorMsg =
 				error.response?.data?.msg || "An unexpected error occurred.";
-			Alert.alert("Registration Failed", errorMsg);
+			setSnack({ visible: true, message: errorMsg });
 		} finally {
 			setIsLoading(false);
 		}
 	};
+
 
 	return (
 		<SafeAreaView style={styles.container}>
@@ -79,6 +83,7 @@ const RegisterScreen = ({ navigation }) => {
 			<TouchableOpacity onPress={() => navigation.goBack()}>
 				<Text style={styles.linkText}>Already have an account? Log In</Text>
 			</TouchableOpacity>
+			<Snackbar message={snack.message} visible={snack.visible} />
 		</SafeAreaView>
 	);
 };

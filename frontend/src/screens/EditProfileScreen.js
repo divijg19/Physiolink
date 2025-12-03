@@ -1,12 +1,13 @@
 // src/screens/EditProfileScreen.js
 import React, { useState, useContext } from "react"; // 1. Import useContext
-import { View, Text, StyleSheet, Alert, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import StyledInput from "../components/StyledInput";
 import StyledButton from "../components/StyledButton";
-import { COLORS } from "../theme";
+import { COLORS, SPACING, FONT, SHADOW } from "../theme";
 import apiClient from "../api/client";
 import { AuthContext } from "../context/AuthContext"; // 2. Import AuthContext
+import Snackbar from '../components/Snackbar';
 
 const EditProfileScreen = ({ route, navigation }) => {
 	const { userRole } = useContext(AuthContext); // 3. Get the user's role
@@ -23,28 +24,33 @@ const EditProfileScreen = ({ route, navigation }) => {
 	// PT fields
 	const [specialty, setSpecialty] = useState(existingProfile.specialty || "");
 	const [bio, setBio] = useState(existingProfile.bio || "");
+	const [credentials, setCredentials] = useState(existingProfile.credentials || "");
+	const [location, setLocation] = useState(existingProfile.location || "");
+	const [profileImageUrl, setProfileImageUrl] = useState(existingProfile.profileImageUrl || "");
 
 	const [isLoading, setIsLoading] = useState(false);
 
+	const [snack, setSnack] = useState({ visible: false, message: '' });
+
 	const handleSaveProfile = async () => {
 		if (!firstName || !lastName) {
-			return Alert.alert("Required", "First and last name are required.");
+			return setSnack({ visible: true, message: 'First and last name are required.' });
 		}
 		setIsLoading(true);
 		try {
 			// 4. Construct the payload based on the user's role
 			let profileData = { firstName, lastName };
 			if (userRole === "pt") {
-				profileData = { ...profileData, specialty, bio };
+				profileData = { ...profileData, specialty, bio, credentials, location, profileImageUrl };
 			} else {
 				profileData = { ...profileData, condition, goals, age: age ? Number(age) : undefined, gender };
 			}
 
 			await apiClient.post("/profile", profileData);
-			Alert.alert("Success", "Your profile has been saved.");
-			navigation.goBack();
+			setSnack({ visible: true, message: 'Profile saved.' });
+			setTimeout(() => navigation.goBack(), 700);
 		} catch (error) {
-			Alert.alert("Error", "Could not save profile.");
+			setSnack({ visible: true, message: 'Could not save profile.' });
 		} finally {
 			setIsLoading(false);
 		}
@@ -52,7 +58,7 @@ const EditProfileScreen = ({ route, navigation }) => {
 
 	return (
 		<SafeAreaView style={styles.container}>
-			<ScrollView>
+			<ScrollView contentContainerStyle={styles.scrollContent}>
 				<Text style={styles.title}>
 					{existingProfile.firstName ? "Edit Profile" : "Create Profile"}
 				</Text>
@@ -81,9 +87,35 @@ const EditProfileScreen = ({ route, navigation }) => {
 							onChangeText={setBio}
 							multiline
 						/>
+						<StyledInput
+							placeholder="Credentials (e.g., DPT, PhD)"
+							value={credentials}
+							onChangeText={setCredentials}
+						/>
+						<StyledInput
+							placeholder="Location (City, State)"
+							value={location}
+							onChangeText={setLocation}
+						/>
+						<StyledInput
+							placeholder="Profile Photo URL"
+							value={profileImageUrl}
+							onChangeText={setProfileImageUrl}
+						/>
 					</>
 				) : (
 					<>
+						<StyledInput
+							placeholder="Age"
+							value={age}
+							onChangeText={setAge}
+							keyboardType="numeric"
+						/>
+						<StyledInput
+							placeholder="Gender"
+							value={gender}
+							onChangeText={setGender}
+						/>
 						<StyledInput
 							placeholder="Primary Condition (e.g., Lower Back Pain)"
 							value={condition}
@@ -102,19 +134,21 @@ const EditProfileScreen = ({ route, navigation }) => {
 					onPress={handleSaveProfile}
 					isLoading={isLoading}
 				/>
+				<Snackbar message={snack.message} visible={snack.visible} />
 			</ScrollView>
 		</SafeAreaView>
 	);
 };
 
 const styles = StyleSheet.create({
-	container: { flex: 1, backgroundColor: COLORS.background, padding: 20 },
+	container: { flex: 1, backgroundColor: COLORS.background, padding: SPACING.md },
+	scrollContent: { padding: SPACING.md },
 	title: {
-		fontSize: 32,
+		fontSize: FONT.largeTitle,
 		fontFamily: "Poppins_700Bold",
 		color: COLORS.textDark,
 		textAlign: "center",
-		marginBottom: 20,
+		marginBottom: SPACING.md,
 	},
 });
 
