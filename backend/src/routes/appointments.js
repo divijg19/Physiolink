@@ -9,9 +9,9 @@ const appointmentController = require("../controllers/appointmentController");
 // @desc    PT creates available slots
 // @access  PT Only
 router.post(
-    "/availability",
-    [auth, isPt],
-    appointmentController.createAvailability,
+	"/availability",
+	[auth, isPt],
+	appointmentController.createAvailability,
 );
 
 // @route   GET api/appointments/me
@@ -23,9 +23,9 @@ router.get("/me", auth, appointmentController.getMySchedule);
 // @desc    Get a specific PT's available slots
 // @access  Private
 router.get(
-    "/availability/:ptId",
-    auth,
-    appointmentController.getTherapistAvailability,
+	"/availability/:ptId",
+	auth,
+	appointmentController.getTherapistAvailability,
 );
 
 // @route   PUT api/appointments/:id/book
@@ -34,6 +34,10 @@ router.get(
 router.put("/:id/book", auth, appointmentController.bookAppointment);
 
 // PT updates status of an appointment (confirm/reject)
-router.put("/:id/status", [auth, isPt], appointmentController.updateAppointmentStatus);
+router.put(
+	"/:id/status",
+	[auth, isPt],
+	appointmentController.updateAppointmentStatus,
+);
 
 module.exports = router;

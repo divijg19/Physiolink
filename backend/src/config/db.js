@@ -9,7 +9,7 @@ const connectDB = async () => {
 	} catch (err) {
 		console.error(err);
 		// In production we exit, but during tests let the error bubble so Jest can handle it
-		if (process.env.NODE_ENV === 'test') {
+		if (process.env.NODE_ENV === "test") {
 			throw err;
 		}
 		// Exit process with failure for non-test environments
