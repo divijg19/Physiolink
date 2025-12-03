@@ -1,25 +1,26 @@
 // src/controllers/therapistController.js
-const User = require("../models/User");
+const therapistService = require('../services/therapistService');
+
 
 // @desc    Get all verified physiotherapists
+// Supports filtering (specialty, location), pagination (page, limit) and sorting (sort)
 exports.getAllTherapists = async (req, res) => {
     try {
-        // Accept optional query parameters for filtering
-        const { specialty, location } = req.query;
-        const userQuery = { role: 'pt' };
-
-        // We'll do filtering on the profile fields using aggregation or a two-step query
-        let therapists = await User.find(userQuery).select('-password').populate('profile');
-
-        if (specialty) {
-            therapists = therapists.filter(t => t.profile && t.profile.specialty && t.profile.specialty.toLowerCase().includes(specialty.toLowerCase()));
-        }
-        if (location) {
-            therapists = therapists.filter(t => t.profile && t.profile.location && t.profile.location.toLowerCase().includes(location.toLowerCase()));
-        }
-
-        res.json(therapists);
+        const result = await therapistService.getAllTherapists(req.query || {});
+        res.json(result);
     } catch (err) {
+        console.error(err);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+};
+
+// @desc Get a single therapist by id with availability
+exports.getTherapistById = async (req, res) => {
+    try {
+        const therapist = await therapistService.getTherapistById(req.params.id, req.query.date);
+        res.json(therapist);
+    } catch (err) {
+        if (err.status) return res.status(err.status).json({ msg: err.message });
         console.error(err);
         res.status(500).json({ msg: 'Server Error' });
     }

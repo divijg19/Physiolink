@@ -1,14 +1,16 @@
 // src/screens/SetAvailabilityScreen.js
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Alert } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import StyledButton from "../components/StyledButton";
 import { COLORS } from "../theme";
 import apiClient from "../api/client";
 import ScreenHeader from "../components/ScreenHeader";
+import Snackbar from '../components/Snackbar';
 
 const SetAvailabilityScreen = () => {
 	const [isLoading, setIsLoading] = useState(false);
+	const [snack, setSnack] = useState({ visible: false, message: '' });
 
 	const handleCreateDemoSlots = async () => {
 		setIsLoading(true);
@@ -33,13 +35,10 @@ const SetAvailabilityScreen = () => {
 			];
 
 			await apiClient.post("/appointments/availability", { slots });
-			Alert.alert(
-				"Success",
-				"Your available slots have been created for tomorrow.",
-			);
+			setSnack({ visible: true, message: 'Slots created for tomorrow.' });
 		} catch (error) {
 			const errorMsg = error.response?.data?.msg || "Could not create slots.";
-			Alert.alert("Error", errorMsg);
+			setSnack({ visible: true, message: errorMsg });
 		} finally {
 			setIsLoading(false);
 		}
@@ -58,6 +57,7 @@ const SetAvailabilityScreen = () => {
 					isLoading={isLoading}
 				/>
 			</View>
+			<Snackbar message={snack.message} visible={snack.visible} />
 		</SafeAreaView>
 	);
 };

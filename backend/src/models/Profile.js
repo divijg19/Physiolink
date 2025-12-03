@@ -48,6 +48,16 @@ const ProfileSchema = new mongoose.Schema({
 		// URL to a document, or text
 		type: String,
 	},
+	profileImageUrl: {
+		// URL to a profile image
+		type: String,
+	},
+	rating: {
+		type: Number,
+		min: 0,
+		max: 5,
+		default: 0,
+	},
 	isVerified: {
 		type: Boolean,
 		default: false,
