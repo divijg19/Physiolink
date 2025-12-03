@@ -9,6 +9,6 @@ const therapistController = require("../controllers/therapistController");
 // @access  Private (must be logged in to see therapists)
 router.get("/", auth, therapistController.getAllTherapists);
 // GET api/therapists/:id
-router.get('/:id', auth, therapistController.getTherapistById);
+router.get("/:id", auth, therapistController.getTherapistById);
 
 module.exports = router;

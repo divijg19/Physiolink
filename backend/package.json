@@ -23,6 +23,7 @@
     "supertest": "7.1.4",
     "mongodb-memory-server": "10.3.0",
     "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "@apidevtools/swagger-parser": "^12.1.0",
     "yaml": "^2.8.2"
   },

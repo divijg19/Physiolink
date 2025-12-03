@@ -2,14 +2,16 @@ name: CI (Bun)
 
 on:
   push:
-    branches: [main]
+    branches: [main, js-prototype]
   pull_request:
-    branches: [main]
+    branches: [main, js-prototype]
 
 jobs:
   backend-tests:
     name: Backend tests (bun)
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: testsecret
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -26,6 +28,15 @@ jobs:
             ~/.bun
           key: ${{ runner.os }}-bun-${{ hashFiles('backend/package.json') }}
 
+      - name: Cache mongodb-memory-server binaries
+        uses: actions/cache@v4
+        with:
+          # mongodb-memory-server stores downloaded MongoDB binaries here
+          path: |
+            ~/.cache/mongodb-binaries
+            ~/.cache/mongodb-memory-server
+          key: ${{ runner.os }}-mongodb-binaries-${{ hashFiles('backend/package.json') }}
+
       - name: Install backend dependencies (bun)
         working-directory: ./backend
         run: bun install
@@ -33,4 +44,5 @@ jobs:
       - name: Run backend tests (Vitest via bunx)
         working-directory: ./backend
         run: |
+          bunx biome check . --write && bunx biome format . --write || (echo "Lint failed" && exit 1)
           bunx vitest --config=vitest.config.cjs --run
