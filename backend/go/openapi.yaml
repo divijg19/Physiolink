@@ -1,0 +1,422 @@
+openapi: 3.1.0
+
+info:
+  title: Physiolink API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8080/api
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Created
+  /auth/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /therapists:
+    get:
+      summary: List therapists (with filters)
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: specialty
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Therapist"
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+  /therapists/{id}:
+    get:
+      summary: Get therapist detail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Therapist"
+        "404":
+          description: Not found
+  /appointments:
+    post:
+      summary: Create availability (PT only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvailabilityRequest"
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+  /appointments/availability:
+    post:
+      summary: Create availability (PT only) (alias)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvailabilityRequest"
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+  /appointments/me:
+    get:
+      summary: Get my schedule (PT or patient)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Appointment"
+        "401":
+          description: Unauthorized
+  /appointments/availability/{ptId}:
+    get:
+      summary: Get a specific PT's available slots
+      parameters:
+        - in: path
+          name: ptId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Appointment"
+        "404":
+          description: Therapist not found
+  /appointments/{id}/book:
+    put:
+      summary: Book an available appointment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Booked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "409":
+          description: Conflict - already booked
+        "404":
+          description: Appointment not found
+  /appointments/{id}/status:
+    put:
+      summary: Update appointment status (PT)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+  /profile/me:
+    get:
+      summary: Current user's profile
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "401":
+          description: Unauthorized
+  /reviews:
+    post:
+      summary: Create a review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "400":
+          description: Bad Request
+        "403":
+          description: Forbidden
+components:
+  schemas:
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+    Therapist:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        profile:
+          $ref: "#/components/schemas/Profile"
+        reviewCount:
+          type: integer
+        availableSlots:
+          type: array
+          items:
+            $ref: "#/components/schemas/Appointment"
+        rating:
+          type: number
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        specialty:
+          type: string
+        bio:
+          type: string
+        credentials:
+          type: string
+        location:
+          type: string
+        profileImageUrl:
+          type: string
+    Appointment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        pt:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            profile:
+              $ref: "#/components/schemas/Profile"
+        patient:
+          anyOf:
+            - type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                profile:
+                  $ref: "#/components/schemas/Profile"
+            - type: "null"
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AvailabilityRequest:
+      type: object
+      properties:
+        slots:
+          type: array
+          items:
+            type: object
+            properties:
+              startTime:
+                type: string
+                format: date-time
+              endTime:
+                type: string
+                format: date-time
+    ReviewRequest:
+      type: object
+      properties:
+        therapistId:
+          type: string
+        rating:
+          type: number
+        comment:
+          type: string
+    Review:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        therapist:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            profile:
+              $ref: "#/components/schemas/Profile"
+        patient:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            profile:
+              $ref: "#/components/schemas/Profile"
+        rating:
+          type: number
+        comment:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    Reminder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        appointment:
+          $ref: "#/components/schemas/Appointment"
+        patient:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+        pt:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+        message:
+          type: string
+        remindAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        role:
+          type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
