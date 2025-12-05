@@ -4,7 +4,7 @@ info:
   title: Physiolink API
   version: 0.1.0
 servers:
-  - url: http://localhost:5000/api
+  - url: http://localhost:8080/api
 security:
   - bearerAuth: []
 paths:
@@ -82,7 +82,7 @@ paths:
                 $ref: "#/components/schemas/Therapist"
         "404":
           description: Not found
-  /appointments:
+  /appointments/availability:
     post:
       summary: Create availability (PT only)
       requestBody:
@@ -96,34 +96,6 @@ paths:
           description: Created
         "400":
           description: Bad Request
-        "401":
-          description: Unauthorized
-  /appointments/availability:
-    post:
-      summary: Create availability (PT only) (alias)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AvailabilityRequest"
-      responses:
-        "201":
-          description: Created
-        "400":
-          description: Bad Request
-  /appointments/me:
-    get:
-      summary: Get my schedule (PT or patient)
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Appointment"
         "401":
           description: Unauthorized
   /appointments/availability/{ptId}:
@@ -146,6 +118,20 @@ paths:
                   $ref: "#/components/schemas/Appointment"
         "404":
           description: Therapist not found
+  /appointments/me:
+    get:
+      summary: Get my schedule (PT or patient)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Appointment"
+        "401":
+          description: Unauthorized
   /appointments/{id}/book:
     put:
       summary: Book an available appointment
@@ -207,6 +193,22 @@ paths:
                 $ref: "#/components/schemas/Profile"
         "401":
           description: Unauthorized
+  /profile:
+    post:
+      summary: Create or update profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Profile"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
   /reviews:
     post:
       summary: Create a review
@@ -227,6 +229,37 @@ paths:
           description: Bad Request
         "403":
           description: Forbidden
+  /reviews/{therapistId}:
+    get:
+      summary: List reviews for therapist
+      parameters:
+        - in: path
+          name: therapistId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+  /reminders/me:
+    get:
+      summary: Get my reminders (patient)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reminder"
+
 components:
   schemas:
     RegisterRequest:
@@ -255,9 +288,13 @@ components:
       properties:
         _id:
           type: string
+        email:
+          type: string
         profile:
           $ref: "#/components/schemas/Profile"
         reviewCount:
+          type: integer
+        availableSlotsCount:
           type: integer
         availableSlots:
           type: array
@@ -284,6 +321,8 @@ components:
           type: string
         profileImageUrl:
           type: string
+        rating:
+          type: number
     Appointment:
       type: object
       properties:
@@ -373,24 +412,9 @@ components:
       properties:
         _id:
           type: string
-        appointment:
-          $ref: "#/components/schemas/Appointment"
-        patient:
-          type: object
-          properties:
-            _id:
-              type: string
-        pt:
-          type: object
-          properties:
-            _id:
-              type: string
         message:
           type: string
         remindAt:
-          type: string
-          format: date-time
-        createdAt:
           type: string
           format: date-time
     User:

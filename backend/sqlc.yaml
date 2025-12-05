@@ -1,0 +1,7 @@
+version: "2"
+packages:
+  - name: "db"
+    path: "github.com/divijg19/physiolink/backend/internal/db"
+    queries: "internal/db/queries"
+    schema: "migrations"
+    engine: "postgresql"
