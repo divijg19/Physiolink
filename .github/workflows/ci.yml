@@ -1,48 +1,40 @@
-name: CI (Bun)
+name: Backend CI
 
 on:
-  push:
-    branches: [main, js-prototype]
   pull_request:
-    branches: [main, js-prototype]
+    paths:
+      - "backend/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch: {}
 
 jobs:
-  backend-tests:
-    name: Backend tests (bun)
+  test-and-lint:
     runs-on: ubuntu-latest
-    env:
-      JWT_SECRET: testsecret
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Set up Go (stable)
+        uses: actions/setup-go@v5
         with:
-          bun-version: latest
+          go-version: "stable"
+          cache: true
+          cache-dependency-path: backend/go.sum
 
-      - name: Cache Bun cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.bun
-          key: ${{ runner.os }}-bun-${{ hashFiles('backend/package.json') }}
+      - name: Download dependencies
+        run: go mod download
 
-      - name: Cache mongodb-memory-server binaries
-        uses: actions/cache@v4
-        with:
-          # mongodb-memory-server stores downloaded MongoDB binaries here
-          path: |
-            ~/.cache/mongodb-binaries
-            ~/.cache/mongodb-memory-server
-          key: ${{ runner.os }}-mongodb-binaries-${{ hashFiles('backend/package.json') }}
+      - name: Run tests
+        run: go test ./...
 
-      - name: Install backend dependencies (bun)
-        working-directory: ./backend
-        run: bun install
+      - name: Run go vet
+        run: go vet ./...
 
-      - name: Run backend tests (Vitest via bunx)
-        working-directory: ./backend
-        run: |
-          bunx biome check . --write && bunx biome format . --write || (echo "Lint failed" && exit 1)
-          bunx vitest --config=vitest.config.cjs --run
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: Run staticcheck
+        run: $(go env GOPATH)/bin/staticcheck ./...
