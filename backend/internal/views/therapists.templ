@@ -1,0 +1,49 @@
+package views
+
+import (
+	"fmt"
+	"github.com/divijg19/physiolink/backend/internal/service"
+)
+
+templ TherapistsList(therapists []service.TherapistSummary, isLoggedIn bool) {
+	@Layout("Therapists", isLoggedIn) {
+		<div class="max-w-7xl mx-auto">
+			<h1 class="text-3xl font-bold mb-8">Find a Therapist</h1>
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+				for _, t := range therapists {
+					<div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-200">
+						<div class="p-6">
+							<div class="flex items-center mb-4">
+								<div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl">
+									{ string(t.Email[0]) }
+								</div>
+								<div class="ml-4">
+									<h3 class="text-lg font-semibold text-gray-900">{ t.Email }</h3>
+									<p class="text-sm text-gray-500">Therapist</p>
+								</div>
+							</div>
+							<div class="border-t pt-4">
+								<div class="flex justify-between text-sm text-gray-600 mb-2">
+									<span>Available Slots:</span>
+									<span class="font-medium text-green-600">{ fmt.Sprintf("%d", t.AvailableSlots) }</span> 
+								</div>
+								<div class="flex justify-between text-sm text-gray-600">
+									<span>Reviews:</span>
+									<span class="font-medium">{ fmt.Sprintf("%d", t.ReviewCount) }</span>
+								</div>
+							</div>
+							<a href={ templ.SafeURL(fmt.Sprintf("/therapists/%s", t.ID)) } class="block mt-6 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200 text-center">
+								View Profile
+							</a>
+						</div>
+					</div>
+				}
+			</div>
+			if len(therapists) == 0 {
+				<div class="text-center py-12">
+					<p class="text-gray-500 text-lg">No therapists found.</p>
+				</div>
+			}
+		</div>
+	}
+}

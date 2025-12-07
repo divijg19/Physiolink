@@ -1,0 +1,142 @@
+package views
+
+import "time"
+
+type AppointmentView struct {
+	ID        string
+	OtherName string
+	StartTime time.Time
+	Status    string
+}
+
+templ AppointmentsList(appointments []AppointmentView) {
+	if len(appointments) == 0 {
+		<div class="bg-white shadow sm:rounded-lg p-6 text-center text-gray-500">
+			No appointments scheduled yet.
+		</div>
+	} else {
+		<div class="bg-white shadow overflow-hidden sm:rounded-lg">
+			<ul role="list" class="divide-y divide-gray-200">
+				for _, apt := range appointments {
+					<li>
+						<div class="px-4 py-4 sm:px-6">
+							<div class="flex items-center justify-between">
+								<p class="text-sm font-medium text-blue-600 truncate">
+									{ apt.OtherName }
+								</p>
+								<div class="ml-2 flex-shrink-0 flex">
+									<p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+										{ apt.Status }
+									</p>
+								</div>
+							</div>
+							<div class="mt-2 sm:flex sm:justify-between">
+								<div class="sm:flex">
+									<p class="flex items-center text-sm text-gray-500">
+										{ apt.StartTime.Format("Jan 02, 2006 - 3:04 PM") }
+									</p>
+								</div>
+							</div>
+						</div>
+					</li>
+				}
+			</ul>
+		</div>
+	}
+}
+
+templ ProfileView(userEmail string, role string) {
+	<div id="profile-section" class="bg-white shadow overflow-hidden sm:rounded-lg">
+		<div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+			<div>
+				<h3 class="text-lg leading-6 font-medium text-gray-900">User Profile</h3>
+				<p class="mt-1 max-w-2xl text-sm text-gray-500">Personal details and application status.</p>
+			</div>
+			<button 
+				hx-get="/web/profile/edit" 
+				hx-target="#profile-section" 
+				hx-swap="outerHTML"
+				class="text-blue-600 hover:text-blue-900 text-sm font-medium"
+			>
+				Edit Profile
+			</button>
+		</div>
+		<div class="border-t border-gray-200">
+			<dl>
+				<div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+					<dt class="text-sm font-medium text-gray-500">Email address</dt>
+					<dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{ userEmail }</dd>
+				</div>
+				<div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+					<dt class="text-sm font-medium text-gray-500">Role</dt>
+					<dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{ role }</dd>
+				</div>
+			</dl>
+		</div>
+	</div>
+}
+
+templ ProfileForm(userEmail string, role string) {
+	<div id="profile-section" class="bg-white shadow overflow-hidden sm:rounded-lg">
+		<div class="px-4 py-5 sm:px-6">
+			<h3 class="text-lg leading-6 font-medium text-gray-900">Edit Profile</h3>
+			<p class="mt-1 max-w-2xl text-sm text-gray-500">Update your personal information.</p>
+		</div>
+		<div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+			<form hx-put="/web/profile" hx-target="#profile-section" hx-swap="outerHTML">
+				<div class="grid grid-cols-6 gap-6">
+					<div class="col-span-6 sm:col-span-4">
+						<label class="block text-sm font-medium text-gray-700">Email (Read-only)</label>
+						<input type="text" value={ userEmail } disabled class="mt-1 block w-full bg-gray-100 border-gray-300 rounded-md shadow-sm sm:text-sm" />
+					</div>
+					
+					<div class="col-span-6 sm:col-span-3">
+						<label for="firstName" class="block text-sm font-medium text-gray-700">First name</label>
+						<input type="text" name="firstName" id="firstName" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+					</div>
+
+					<div class="col-span-6 sm:col-span-3">
+						<label for="lastName" class="block text-sm font-medium text-gray-700">Last name</label>
+						<input type="text" name="lastName" id="lastName" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+					</div>
+
+					<div class="col-span-6">
+						<label for="bio" class="block text-sm font-medium text-gray-700">Bio</label>
+						<textarea id="bio" name="bio" rows="3" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md"></textarea>
+					</div>
+				</div>
+				<div class="mt-6 flex justify-end space-x-3">
+					<button 
+						type="button" 
+						hx-get="/web/profile" 
+						hx-target="#profile-section"
+						hx-swap="outerHTML"
+						class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+					>
+						Cancel
+					</button>
+					<button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+						Save
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+}
+
+templ Dashboard(userEmail string, role string) {
+	@Layout("Dashboard", true) {
+		<div class="max-w-7xl mx-auto">
+			<h1 class="text-3xl font-bold mb-8">Dashboard</h1>
+			
+			@ProfileView(userEmail, role)
+
+			<div class="mt-8">
+				<h2 class="text-2xl font-bold mb-4">Your Appointments</h2>
+				<div hx-get="/dashboard/appointments" hx-trigger="load" class="animate-pulse">
+					<div class="h-20 bg-gray-200 rounded"></div>
+				</div>
+			</div>
+		</div>
+	}
+}

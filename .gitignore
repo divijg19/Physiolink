@@ -1,0 +1,40 @@
+# General
+.DS_Store
+.vscode/
+.idea/
+*.log
+*.pem
+
+# Environment
+.env
+.env*.local
+
+# Go (Backend)
+backend/bin/
+backend/vendor/
+backend/*.exe
+backend/*.out
+backend/coverage.txt
+
+# Flutter/Dart (App & Web)
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+coverage/
+
+# Android
+android/app/debug
+android/app/profile
+android/app/release
+*.jks
+*.keystore
+
+# iOS
+ios/Flutter/.last_build_id
+*.mobileprovision
+
+# Web
+web-build/

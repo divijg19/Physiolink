@@ -8,9 +8,13 @@ import (
 
 	"github.com/divijg19/physiolink/backend/internal/activities"
 	"github.com/divijg19/physiolink/backend/internal/workflows"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	_ = godotenv.Load()
+	_ = godotenv.Load("../.env")
+
 	// The client and worker are heavyweight objects that should be created once per process.
 	c, err := client.Dial(client.Options{
 		HostPort: "localhost:7233",

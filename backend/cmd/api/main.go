@@ -15,9 +15,14 @@ import (
 	"github.com/divijg19/physiolink/backend/internal/handlers"
 	"github.com/divijg19/physiolink/backend/internal/server"
 	"github.com/divijg19/physiolink/backend/internal/service"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Try loading .env from current directory or parent directory (for monorepo structure)
+	_ = godotenv.Load()
+	_ = godotenv.Load("../.env")
+
 	cfg := config.New()
 	// connect DB
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
