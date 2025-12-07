@@ -28,8 +28,34 @@ func NewRouter(cfg *config.Config) http.Handler {
 	// health
 	r.Get("/health", handlers.Health)
 
-	// public (Templ SSR)
-	r.Get("/", handlers.Home)
+	// Public routes with optional auth (for navbar state)
+	r.Group(func(r chi.Router) {
+		r.Use(mware.OptionalCookieAuth(cfg))
+		r.Get("/", handlers.Home)
+		r.Get("/login", handlers.LoginPage)
+		r.Get("/register", handlers.RegisterPage)
+		r.Get("/therapists", handlers.TherapistsPage)
+		r.Get("/therapists/{id}", handlers.TherapistDetailPage)
+		r.Get("/web/reviews/{therapistId}", handlers.GetReviewsWeb)
+	})
+
+	// Protected routes (Web)
+	r.Group(func(r chi.Router) {
+		r.Use(mware.CookieAuth(cfg))
+		r.Get("/dashboard", handlers.DashboardPage)
+		r.Get("/dashboard/appointments", handlers.DashboardAppointments)
+		r.Put("/web/appointments/{id}/book", handlers.BookAppointmentWeb)
+		r.Get("/web/reviews/{therapistId}/form", handlers.GetReviewFormWeb)
+		r.Post("/web/reviews/{therapistId}", handlers.PostReviewWeb)
+		r.Get("/web/profile", handlers.GetProfileWeb)
+		r.Get("/web/profile/edit", handlers.GetProfileFormWeb)
+		r.Put("/web/profile", handlers.PutProfileWeb)
+		r.Post("/auth/logout", handlers.Logout)
+	})
+
+	// HTMX Form submissions
+	r.Post("/auth/login-form", handlers.LoginSubmit)
+	r.Post("/auth/register-form", handlers.RegisterSubmit)
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
