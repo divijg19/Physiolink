@@ -1,0 +1,64 @@
+name: Backend Integration Tests
+
+on:
+    pull_request:
+        paths:
+            - "backend/**"
+            - ".github/workflows/backend-integration.yml"
+    workflow_dispatch: {}
+
+jobs:
+    integration:
+        runs-on: ubuntu-latest
+        services:
+            postgres:
+                image: postgres:15
+                env:
+                    POSTGRES_PASSWORD: postgres
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+        defaults:
+            run:
+                working-directory: backend
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+
+            - name: Setup Go, cache and install tools
+              uses: ./.github/actions/setup-go-cache
+              with:
+                  go-version: "1.25"
+                  install-gotestsum: "true"
+
+            - name: Wait for Postgres
+              run: |
+                  sudo apt-get update -y
+                  sudo apt-get install -y postgresql-client
+                  until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done
+              env:
+                  PGPASSWORD: postgres
+
+            - name: Apply migrations
+              run: |
+                  export DATABASE_URL="postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"
+                  for f in migrations/*.sql; do psql "$DATABASE_URL" -f "$f"; done
+
+            - name: Download dependencies
+              run: go mod download
+
+            - name: Run integration tests
+              env:
+                  DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+              run: |
+                  gotestsum --junitfile integration-tests.xml -- -coverprofile=integration-coverage.out ./integration -v
+
+            - name: Upload test results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: integration-test-results
+                  path: |
+                      backend/integration-tests.xml
+                      backend/integration-coverage.out

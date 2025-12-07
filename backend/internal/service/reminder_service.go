@@ -6,14 +6,18 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/divijg19/physiolink/backend/internal/clock"
 	"github.com/divijg19/physiolink/backend/internal/db"
 )
 
 type ReminderService struct {
-	db *db.DB
+	db  *db.DB
+	clk clock.Clock
 }
 
-func NewReminderService(d *db.DB) *ReminderService { return &ReminderService{db: d} }
+func NewReminderService(d *db.DB, clk clock.Clock) *ReminderService {
+	return &ReminderService{db: d, clk: clk}
+}
 
 type ReminderItem struct {
 	ID       string `json:"_id"`
@@ -22,34 +26,26 @@ type ReminderItem struct {
 }
 
 func (s *ReminderService) ListForPatient(ctx context.Context, patientID uuid.UUID) ([]ReminderItem, error) {
-	q := `SELECT r.id::text, r.scheduled_for, r.payload, s.start_ts
-	      FROM reminders r
-	      JOIN appointments a ON a.id = r.appointment_id
-	      JOIN availability_slots s ON s.id = a.slot_id
-	      WHERE a.patient_id = $1
-	      ORDER BY r.scheduled_for ASC`
-	rows, err := s.db.Pool.Query(ctx, q, patientID)
+	// use parameterized query so tests can control "now"
+	rows, err := s.db.Queries.GetUpcomingRemindersBefore(ctx, db.GetUpcomingRemindersBeforeParams{PatientID: patientID, ScheduledFor: s.clk.Now()})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	var out []ReminderItem
-	for rows.Next() {
-		var id string
-		var scheduled, startTs string
-		var payload []byte
-		if err := rows.Scan(&id, &scheduled, &payload, &startTs); err != nil {
-			return nil, err
-		}
-		msg := "Reminder: appointment on " + startTs
-		if len(payload) > 0 {
+	for _, r := range rows {
+		msg := "Reminder: appointment on " + r.AppointmentStart.Format("2006-01-02 15:04")
+		if r.Payload.Valid && len(r.Payload.RawMessage) > 0 {
 			var m map[string]interface{}
-			_ = json.Unmarshal(payload, &m)
+			_ = json.Unmarshal(r.Payload.RawMessage, &m)
 			if v, ok := m["message"].(string); ok && v != "" {
 				msg = v
 			}
 		}
-		out = append(out, ReminderItem{ID: id, Message: msg, RemindAt: scheduled})
+		out = append(out, ReminderItem{
+			ID:       r.ID.String(),
+			Message:  msg,
+			RemindAt: r.ScheduledFor.Format("2006-01-02T15:04:05Z07:00"),
+		})
 	}
 	return out, nil
 }

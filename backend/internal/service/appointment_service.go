@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 	"go.temporal.io/sdk/client"
 
 	"github.com/divijg19/physiolink/backend/internal/db"
@@ -34,8 +37,20 @@ type Slot struct {
 
 func (s *AppointmentService) CreateAvailability(ctx context.Context, therapistID uuid.UUID, slots []struct{ StartTs, EndTs string }) error {
 	for _, sl := range slots {
-		_, err := s.db.Pool.Exec(ctx, `INSERT INTO availability_slots (therapist_id, start_ts, end_ts, status) VALUES ($1,$2,$3,'open') ON CONFLICT DO NOTHING`, therapistID, sl.StartTs, sl.EndTs)
+		parsed, err := time.Parse(time.RFC3339, sl.StartTs)
 		if err != nil {
+			return err
+		}
+		parsedEnd, err := time.Parse(time.RFC3339, sl.EndTs)
+		if err != nil {
+			return err
+		}
+		arg := db.CreateAvailabilitySlotsParams{
+			TherapistID: therapistID,
+			StartTs:     parsed,
+			EndTs:       parsedEnd,
+		}
+		if err := s.db.Queries.CreateAvailabilitySlots(ctx, arg); err != nil {
 			return err
 		}
 	}
@@ -43,58 +58,66 @@ func (s *AppointmentService) CreateAvailability(ctx context.Context, therapistID
 }
 
 func (s *AppointmentService) GetTherapistAvailability(ctx context.Context, therapistID uuid.UUID) ([]Slot, error) {
-	rows, err := s.db.Pool.Query(ctx, `SELECT id, therapist_id, start_ts, end_ts, status FROM availability_slots WHERE therapist_id=$1 AND status='open' ORDER BY start_ts ASC`, therapistID)
+	rows, err := s.db.Queries.GetTherapistOpenSlots(ctx, therapistID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	var out []Slot
-	for rows.Next() {
-		var sl Slot
-		if err := rows.Scan(&sl.ID, &sl.TherapistID, &sl.StartTs, &sl.EndTs, &sl.Status); err != nil {
-			return nil, err
-		}
-		out = append(out, sl)
+	for _, r := range rows {
+		out = append(out, Slot{
+			ID:          r.ID,
+			TherapistID: r.TherapistID,
+			StartTs:     r.StartTs.Format(time.RFC3339),
+			EndTs:       r.EndTs.Format(time.RFC3339),
+			Status:      r.Status,
+		})
 	}
 	return out, nil
 }
 
 func (s *AppointmentService) BookAppointment(ctx context.Context, appointmentID uuid.UUID, patientID uuid.UUID) (uuid.UUID, error) {
-	// Start a transaction -- FOR UPDATE requires a transaction to take row locks.
-	tx, err := s.db.Pool.Begin(ctx)
+	// Start a transaction using database/sql
+	tx, err := s.db.SQL.BeginTx(ctx, nil)
 	if err != nil {
 		return uuid.Nil, err
 	}
 	defer func() {
-		// if not committed, rollback to free locks
-		_ = tx.Rollback(ctx)
+		_ = tx.Rollback()
 	}()
 
+	// use sqlc queries with transaction
+	qtx := s.db.Queries.WithTx(tx)
+
 	// lock the slot within the transaction
-	var slotID uuid.UUID
-	var therapistID uuid.UUID
-	var status string
-	err = tx.QueryRow(ctx, `SELECT id, therapist_id, status FROM availability_slots WHERE id=$1 FOR UPDATE`, appointmentID).Scan(&slotID, &therapistID, &status)
+	slot, err := qtx.BookAppointmentTxLockSlot(ctx, appointmentID)
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if status != "open" {
+	if slot.Status != "open" {
 		return uuid.Nil, ErrConflict
 	}
 
 	// insert appointment
-	var apptID uuid.UUID
-	err = tx.QueryRow(ctx, `INSERT INTO appointments (slot_id, patient_id, therapist_id, status) VALUES ($1,$2,$3,'booked') RETURNING id`, slotID, patientID, therapistID).Scan(&apptID)
+	apptID, err := qtx.InsertAppointment(ctx, db.InsertAppointmentParams{
+		SlotID:      uuid.NullUUID{UUID: slot.ID, Valid: true},
+		PatientID:   patientID,
+		TherapistID: slot.TherapistID,
+		Status:      "booked",
+		Notes:       sql.NullString{Valid: false},
+	})
 	if err != nil {
 		return uuid.Nil, err
 	}
 
 	// mark slot reserved
-	if _, err := tx.Exec(ctx, `UPDATE availability_slots SET status='reserved' WHERE id=$1`, slotID); err != nil {
+	if err := qtx.UpdateSlotStatus(ctx, db.UpdateSlotStatusParams{
+		ID:     slot.ID,
+		Status: "reserved",
+	}); err != nil {
 		return uuid.Nil, err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return uuid.Nil, err
 	}
 
@@ -105,83 +128,42 @@ func (s *AppointmentService) BookAppointment(ctx context.Context, appointmentID 
 		}, workflows.BookingWorkflow, workflows.BookingWorkflowParam{
 			AppointmentID: apptID.String(),
 			PatientID:     patientID.String(),
-			TherapistID:   therapistID.String(),
+			TherapistID:   slot.TherapistID.String(),
 		})
 	}
 
 	return apptID, nil
 }
 
-func (s *AppointmentService) GetMySchedule(ctx context.Context, userID uuid.UUID, role string) ([]uuid.UUID, error) {
-	rows, err := s.db.Pool.Query(ctx, `SELECT id FROM appointments WHERE CASE WHEN $2='pt' THEN therapist_id=$1 ELSE patient_id=$1 END ORDER BY created_at ASC`, userID, role)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		ids = append(ids, id)
-	}
-	return ids, nil
-}
-
-type AppointmentBrief struct {
-	ID      string                 `json:"_id"`
-	PT      map[string]interface{} `json:"pt"`
-	Patient map[string]interface{} `json:"patient"`
-	Start   string                 `json:"startTime"`
-	End     string                 `json:"endTime"`
-	Status  string                 `json:"status"`
-}
-
 func (s *AppointmentService) ListMyAppointments(ctx context.Context, userID uuid.UUID, role string) ([]AppointmentBrief, error) {
-	q := `SELECT a.id::text, a.therapist_id, a.patient_id, a.status, s.start_ts, s.end_ts,
-				 p_pt.display_name, p_pt.profile_extra,
-				 p_pa.display_name, p_pa.profile_extra
-		  FROM appointments a
-		  JOIN availability_slots s ON s.id = a.slot_id
-		  LEFT JOIN profiles p_pt ON p_pt.user_id = a.therapist_id
-		  LEFT JOIN profiles p_pa ON p_pa.user_id = a.patient_id
-		  WHERE CASE WHEN $2='pt' THEN a.therapist_id=$1 ELSE a.patient_id=$1 END
-		  ORDER BY s.start_ts ASC`
-	rows, err := s.db.Pool.Query(ctx, q, userID, role)
+	rows, err := s.db.Queries.ListMyAppointmentsWithDetails(ctx, db.ListMyAppointmentsWithDetailsParams{
+		TherapistID: userID,
+		Column2:     role,
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+
 	var out []AppointmentBrief
-	for rows.Next() {
-		var id string
-		var ptID, paID uuid.UUID
-		var status string
-		var startTs, endTs string
-		var ptDisplay, paDisplay string
-		var ptExtra, paExtra []byte
-		if err := rows.Scan(&id, &ptID, &paID, &status, &startTs, &endTs, &ptDisplay, &ptExtra, &paDisplay, &paExtra); err != nil {
-			return nil, err
-		}
+	for _, r := range rows {
 		// derive names
-		ptFirst, ptLast := splitDisplayName(ptDisplay)
-		paFirst, paLast := splitDisplayName(paDisplay)
+		ptFirst, ptLast := splitDisplayName(r.PtDisplayName.String)
+		paFirst, paLast := splitDisplayName(r.PaDisplayName.String)
 
 		a := AppointmentBrief{
-			ID:     id,
-			Start:  startTs,
-			End:    endTs,
-			Status: status,
+			ID:     r.ID.String(),
+			Start:  r.StartTs.Format(time.RFC3339),
+			End:    r.EndTs.Format(time.RFC3339),
+			Status: r.Status,
 			PT: map[string]interface{}{
-				"_id": ptID.String(),
+				"_id": r.TherapistID.String(),
 				"profile": map[string]interface{}{
 					"firstName": ptFirst,
 					"lastName":  ptLast,
 				},
 			},
 			Patient: map[string]interface{}{
-				"_id": paID.String(),
+				"_id": r.PatientID.String(),
 				"profile": map[string]interface{}{
 					"firstName": paFirst,
 					"lastName":  paLast,
@@ -191,6 +173,15 @@ func (s *AppointmentService) ListMyAppointments(ctx context.Context, userID uuid
 		out = append(out, a)
 	}
 	return out, nil
+}
+
+type AppointmentBrief struct {
+	ID      string                 `json:"_id"`
+	PT      map[string]interface{} `json:"pt"`
+	Patient map[string]interface{} `json:"patient"`
+	Start   string                 `json:"startTime"`
+	End     string                 `json:"endTime"`
+	Status  string                 `json:"status"`
 }
 
 func splitDisplayName(s string) (string, string) {
@@ -215,8 +206,7 @@ func (s *AppointmentService) UpdateAppointmentStatus(ctx context.Context, appoin
 	}
 
 	// ensure appointment exists and owned by pt
-	var therapistID uuid.UUID
-	err := s.db.Pool.QueryRow(ctx, `SELECT therapist_id FROM appointments WHERE id=$1`, appointmentID).Scan(&therapistID)
+	therapistID, err := s.db.Queries.GetAppointmentTherapistID(ctx, appointmentID)
 	if err != nil {
 		return out, err
 	}
@@ -225,21 +215,25 @@ func (s *AppointmentService) UpdateAppointmentStatus(ctx context.Context, appoin
 	}
 
 	// update status
-	if _, err := s.db.Pool.Exec(ctx, `UPDATE appointments SET status=$2, updated_at=now() WHERE id=$1`, appointmentID, status); err != nil {
+	if err := s.db.Queries.UpdateAppointmentStatus(ctx, db.UpdateAppointmentStatusParams{
+		ID:     appointmentID,
+		Status: status,
+	}); err != nil {
 		return out, err
 	}
 
 	// create reminder when confirmed: schedule 24h before start
 	if status == "confirmed" {
-		var slotID uuid.UUID
-		var startTs string
-		err := s.db.Pool.QueryRow(ctx, `SELECT a.slot_id, s.start_ts FROM appointments a JOIN availability_slots s ON s.id=a.slot_id WHERE a.id=$1`, appointmentID).Scan(&slotID, &startTs)
+		slotInfo, err := s.db.Queries.GetAppointmentSlotStartTime(ctx, appointmentID)
 		if err == nil {
-			// Insert reminder with payload message
-			payload := map[string]interface{}{"message": "Reminder: appointment on " + startTs}
+			payload := map[string]interface{}{"message": "Reminder: appointment on " + slotInfo.StartTs.Format(time.RFC3339)}
 			b, _ := json.Marshal(payload)
-			// schedule for 24h before
-			_, _ = s.db.Pool.Exec(ctx, `INSERT INTO reminders (appointment_id, scheduled_for, payload) VALUES ($1, $2::timestamptz - INTERVAL '24 hours', $3)`, appointmentID, startTs, b)
+			scheduledFor := slotInfo.StartTs.Add(-24 * time.Hour)
+			_ = s.db.Queries.InsertReminder(ctx, db.InsertReminderParams{
+				AppointmentID: appointmentID,
+				ScheduledFor:  scheduledFor,
+				Payload:       pqtype.NullRawMessage{RawMessage: b, Valid: len(b) > 0},
+			})
 		}
 	}
 

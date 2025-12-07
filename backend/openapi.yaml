@@ -336,14 +336,12 @@ components:
             profile:
               $ref: "#/components/schemas/Profile"
         patient:
-          anyOf:
-            - type: object
-              properties:
-                _id:
-                  type: string
-                profile:
-                  $ref: "#/components/schemas/Profile"
-            - type: "null"
+          type: object
+          properties:
+            _id:
+              type: string
+            profile:
+              $ref: "#/components/schemas/Profile"
         startTime:
           type: string
           format: date-time
