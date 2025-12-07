@@ -8,11 +8,15 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
+	github.com/lib/pq v1.10.9
+	github.com/oapi-codegen/runtime v1.1.2
+	github.com/sqlc-dev/pqtype v0.3.0
 	go.temporal.io/sdk v1.38.0
 	golang.org/x/crypto v0.45.0
 )
 
 require (
+	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect

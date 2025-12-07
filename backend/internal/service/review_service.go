@@ -56,45 +56,36 @@ func (s *ReviewService) CreateReview(ctx context.Context, patientID, therapistID
 }
 
 func (s *ReviewService) GetReviewsForTherapist(ctx context.Context, therapistID uuid.UUID) ([]map[string]interface{}, error) {
-	rows, err := s.db.Pool.Query(ctx, `SELECT r.id::text, r.patient_id, r.rating, r.comment,
-		COALESCE(p.display_name,''), p.profile_extra
-		FROM appointments a JOIN reviews r ON r.appointment_id = a.id
-		LEFT JOIN profiles p ON p.user_id = r.patient_id
-		WHERE a.therapist_id=$1 ORDER BY r.created_at DESC`, therapistID)
+	rows, err := s.db.Queries.GetReviewsForTherapist(ctx, therapistID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	var out []map[string]interface{}
-	for rows.Next() {
-		var rid string
-		var pid uuid.UUID
-		var rating int
-		var comment sql.NullString
-		var displayName string
-		var profileExtra []byte
-		if err := rows.Scan(&rid, &pid, &rating, &comment, &displayName, &profileExtra); err != nil {
-			return nil, err
-		}
-		firstName, lastName := displayName, ""
-		if idx := strings.Index(displayName, " "); idx > 0 {
-			firstName = displayName[:idx]
-			lastName = strings.TrimSpace(displayName[idx+1:])
+	for _, r := range rows {
+		firstName, lastName := "", ""
+		if r.PatientName.Valid {
+			displayName := r.PatientName.String
+			if idx := strings.Index(displayName, " "); idx > 0 {
+				firstName = displayName[:idx]
+				lastName = strings.TrimSpace(displayName[idx+1:])
+			} else {
+				firstName = displayName
+			}
 		}
 		patient := map[string]interface{}{
-			"_id": pid.String(),
+			"_id": r.PatientID.String(),
 			"profile": map[string]interface{}{
 				"firstName": firstName,
 				"lastName":  lastName,
 			},
 		}
 		m := map[string]interface{}{
-			"_id":     rid,
+			"_id":     r.ReviewID,
 			"patient": patient,
-			"rating":  rating,
+			"rating":  r.Rating,
 		}
-		if comment.Valid {
-			m["comment"] = comment.String
+		if r.Comment.Valid {
+			m["comment"] = r.Comment.String
 		}
 		out = append(out, m)
 	}

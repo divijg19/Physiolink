@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/divijg19/physiolink/backend/internal/db"
 )
 
@@ -55,144 +57,69 @@ func (s *TherapistService) GetAllTherapists(ctx context.Context, p TherapistQuer
 	}
 	offset := (page - 1) * limit
 
-	// Base query: PT users joined with profiles
-	// Note: location filtering depends on address JSON; we apply a simple ILIKE on display_name and specialties
-	var args []interface{}
-	where := []string{"u.role = 'pt'"}
-	if p.Specialty != "" {
-		args = append(args, "%"+p.Specialty+"%")
-		where = append(where, "(p.specialties::text ILIKE $"+fmt.Sprint(len(args))+")")
-	}
-	if p.Location != "" {
-		args = append(args, "%"+p.Location+"%")
-		where = append(where, "(p.address::text ILIKE $"+fmt.Sprint(len(args))+")")
-	}
-	whereSQL := strings.Join(where, " AND ")
-
-	countSQL := "SELECT COUNT(*) FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE " + whereSQL
-	var total int
-	if err := s.db.Pool.QueryRow(ctx, countSQL, args...).Scan(&total); err != nil {
-		return TherapistListResult{}, err
-	}
-
-	q := `SELECT u.id, u.email, COALESCE(p.display_name,'') AS display_name,
-				 COALESCE(p.specialties, ARRAY[]::text[]) AS specialties,
-				 p.address, p.rating
-          FROM users u
-          LEFT JOIN profiles p ON p.user_id = u.id
-          WHERE ` + whereSQL + `
-          ORDER BY u.created_at DESC
-          LIMIT $` + fmt.Sprint(len(args)+1) + ` OFFSET $` + fmt.Sprint(len(args)+2)
-
-	args = append(args, limit, offset)
-	rows, err := s.db.Pool.Query(ctx, q, args...)
+	// Use sqlc queries for therapist list and counts
+	specParam := "%" + p.Specialty + "%"
+	locParam := "%" + p.Location + "%"
+	total64, err := s.db.Queries.GetTherapistCount(ctx, db.GetTherapistCountParams{Column1: specParam, Column2: locParam})
 	if err != nil {
 		return TherapistListResult{}, err
 	}
-	defer rows.Close()
+	total := int(total64)
+
+	therapists, err := s.db.Queries.GetTherapists(ctx, db.GetTherapistsParams{Column1: specParam, Column2: locParam, Limit: int32(limit), Offset: int32(offset)})
+	if err != nil {
+		return TherapistListResult{}, err
+	}
 
 	var out []TherapistSummary
-	var ids []string
-	for rows.Next() {
-		var id, email, displayName string
-		var specialties []string
-		var address []byte
-		var rating sql.NullFloat64
-		if err := rows.Scan(&id, &email, &displayName, &specialties, &address, &rating); err != nil {
-			return TherapistListResult{}, err
-		}
-		// map display_name -> firstName/lastName heuristically; specialty -> first
+	var ids []uuid.UUID
+	for _, t := range therapists {
+		displayName := t.DisplayName
 		firstName, lastName := displayName, ""
 		if idx := strings.Index(displayName, " "); idx > 0 {
 			firstName = displayName[:idx]
 			lastName = strings.TrimSpace(displayName[idx+1:])
 		}
 		specialty := ""
-		if len(specialties) > 0 {
-			specialty = specialties[0]
+		if len(t.Specialties) > 0 {
+			specialty = t.Specialties[0]
 		}
 		prof := map[string]interface{}{
 			"firstName": firstName,
 			"lastName":  lastName,
 			"specialty": specialty,
 		}
-		if address != nil {
-			prof["address"] = string(address)
+		if t.Address.Valid {
+			prof["address"] = string(t.Address.RawMessage)
 		}
-		if rating.Valid {
-			prof["rating"] = rating.Float64
+		if t.Rating.Valid {
+			// rating stored as string in generated type for compatibility; attempt parse
+			prof["rating"] = t.Rating.String
 		}
-		out = append(out, TherapistSummary{ID: id, Email: email, Profile: prof, AvailableSlots: 0, ReviewCount: 0})
-		ids = append(ids, id)
+		out = append(out, TherapistSummary{ID: t.ID.String(), Email: t.Email, Profile: prof, AvailableSlots: 0, ReviewCount: 0})
+		ids = append(ids, t.ID)
 	}
 
 	// Aggregate available slot counts
 	if len(ids) > 0 {
-		// ANY($1) with text[]; cast to uuid in query
-		// Optional date filter
-		if p.Date != "" {
-			qcnt := `SELECT therapist_id::text, COUNT(*)
-					 FROM availability_slots
-					 WHERE therapist_id = ANY($1::uuid[]) AND status = 'open' AND start_ts::date = $2::date
-					 GROUP BY therapist_id`
-			rows2, err := s.db.Pool.Query(ctx, qcnt, ids, p.Date)
-			if err == nil {
-				m := map[string]int{}
-				for rows2.Next() {
-					var tid string
-					var c int
-					_ = rows2.Scan(&tid, &c)
-					m[tid] = c
-				}
-				rows2.Close()
-				for i := range out {
-					if c, ok := m[out[i].ID]; ok {
-						out[i].AvailableSlots = c
-					}
-				}
-			}
-		} else {
-			qcnt := `SELECT therapist_id::text, COUNT(*)
-					 FROM availability_slots
-					 WHERE therapist_id = ANY($1::uuid[]) AND status = 'open'
-					 GROUP BY therapist_id`
-			rows2, err := s.db.Pool.Query(ctx, qcnt, ids)
-			if err == nil {
-				m := map[string]int{}
-				for rows2.Next() {
-					var tid string
-					var c int
-					_ = rows2.Scan(&tid, &c)
-					m[tid] = c
-				}
-				rows2.Close()
-				for i := range out {
-					if c, ok := m[out[i].ID]; ok {
-						out[i].AvailableSlots = c
-					}
-				}
-			}
+		// convert []uuid.UUID to []uuid.UUID param for sqlc
+		availRows, _ := s.db.Queries.GetAvailabilityCounts(ctx, db.GetAvailabilityCountsParams{Column1: ids, Column2: p.Date})
+		mAvail := map[string]int64{}
+		for _, r := range availRows {
+			mAvail[r.TherapistID] = r.Count
 		}
-
-		// Aggregate review counts
-		qrev := `SELECT a.therapist_id::text, COUNT(r.id)
-				 FROM appointments a JOIN reviews r ON r.appointment_id = a.id
-				 WHERE a.therapist_id = ANY($1::uuid[])
-				 GROUP BY a.therapist_id`
-		rows3, err := s.db.Pool.Query(ctx, qrev, ids)
-		if err == nil {
-			m := map[string]int{}
-			for rows3.Next() {
-				var tid string
-				var c int
-				_ = rows3.Scan(&tid, &c)
-				m[tid] = c
+		revRows, _ := s.db.Queries.GetReviewCounts(ctx, ids)
+		mRev := map[string]int64{}
+		for _, r := range revRows {
+			// column name from generator is ATherapistID
+			mRev[r.ATherapistID] = r.Count
+		}
+		for i := range out {
+			if c, ok := mAvail[out[i].ID]; ok {
+				out[i].AvailableSlots = int(c)
 			}
-			rows3.Close()
-			for i := range out {
-				if c, ok := m[out[i].ID]; ok {
-					out[i].ReviewCount = c
-				}
+			if c, ok := mRev[out[i].ID]; ok {
+				out[i].ReviewCount = int(c)
 			}
 		}
 	}

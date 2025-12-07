@@ -1,0 +1,50 @@
+name: Backend CI - Unit
+
+on:
+    pull_request:
+        paths:
+            - "backend/**"
+    push:
+        branches: [main, refactor]
+    workflow_dispatch: {}
+
+jobs:
+    unit:
+        name: Unit + Lint
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: backend
+        steps:
+            - name: Checkout (shallow)
+              uses: actions/checkout@v6
+              with:
+                  fetch-depth: 1
+
+            - name: Setup Go, cache and install tools
+              uses: ./.github/actions/setup-go-cache
+              with:
+                  go-version: "1.25"
+                  install-staticcheck: "true"
+                  install-gotestsum: "true"
+
+            - name: Run go vet
+              run: |
+                  go vet ./...
+
+            - name: Run staticcheck
+              run: |
+                  staticcheck ./...
+
+            - name: Run unit tests
+              run: |
+                  gotestsum --junitfile unit-tests.xml -- -coverprofile=coverage.out ./...
+
+            - name: Upload test results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: test-results
+                  path: |
+                      backend/unit-tests.xml
+                      backend/coverage.out

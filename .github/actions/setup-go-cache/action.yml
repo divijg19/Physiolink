@@ -1,0 +1,71 @@
+name: "Setup Go and Cache"
+description: "Sets up Go, caches module/cache directories and optionally installs developer tools (staticcheck, sqlc, oapi-codegen)."
+author: GitHub Copilot
+inputs:
+  go-version:
+    description: "Go version to install (e.g. 1.25)"
+    required: false
+    default: "1.25"
+  install-staticcheck:
+    description: "Install staticcheck (true/false)"
+    required: false
+    default: "false"
+  install-sqlc:
+    description: "Install sqlc (true/false)"
+    required: false
+    default: "false"
+  install-oapi:
+    description: "Install oapi-codegen (true/false)"
+    required: false
+    default: "false"
+  install-gotestsum:
+    description: "Install gotestsum (true/false)"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - name: Cache Go build and module cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          $HOME/go/pkg/mod
+        key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-mod-
+
+    - name: Ensure $GOBIN in PATH
+      run: |
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      shell: bash
+
+    - name: Install staticcheck
+      if: ${{ inputs.install-staticcheck == 'true' }}
+      run: |
+        go install honnef.co/go/tools/cmd/staticcheck@latest
+      shell: bash
+
+    - name: Install sqlc
+      if: ${{ inputs.install-sqlc == 'true' }}
+      run: |
+        go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+      shell: bash
+
+    - name: Install oapi-codegen
+      if: ${{ inputs.install-oapi == 'true' }}
+      run: |
+        go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+      shell: bash
+
+    - name: Install gotestsum
+      if: ${{ inputs.install-gotestsum == 'true' }}
+      run: |
+        go install gotest.tools/gotestsum@latest
+      shell: bash

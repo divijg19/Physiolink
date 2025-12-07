@@ -1,0 +1,35 @@
+name: Validate sqlc
+
+on:
+  pull_request:
+    paths:
+      - "backend/**/*.sql"
+      - "backend/internal/db/**"
+      - "backend/sqlc.yaml"
+  push:
+    branches: [main, refactor]
+
+jobs:
+  sqlc-validate:
+    name: Validate sqlc generated code
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go, cache and install tools
+        uses: ./.github/actions/setup-go-cache
+        with:
+          go-version: "1.25"
+          install-sqlc: "true"
+
+      - name: Run sqlc generate
+        run: |
+          sqlc generate
+
+      - name: Fail if generated files changed
+        run: |
+          git diff --exit-code || (echo 'sqlc generated files are out of date. Run `sqlc generate` and commit changes.' && exit 1)

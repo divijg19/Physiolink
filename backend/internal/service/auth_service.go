@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -31,39 +30,34 @@ func (s *AuthService) Register(ctx context.Context, email, password, role string
 	if email == "" || password == "" {
 		return uuid.Nil, "", errors.New("email and password required")
 	}
-	// hash
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return uuid.Nil, "", err
 	}
 
-	// Use raw query execution; when using sqlc replace with generated call
-	var id uuid.UUID
-	q := `INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id`
-	row := s.db.Pool.QueryRow(ctx, q, email, string(hash), role)
-	if err := row.Scan(&id); err != nil {
-		// Map unique violation to ErrUserExists (constraint name may vary)
-		// Fallback to generic error otherwise
+	arg := db.CreateUserParams{
+		Email:        email,
+		PasswordHash: string(hash),
+		Role:         role,
+	}
+	id, err := s.db.Queries.CreateUser(ctx, arg)
+	if err != nil {
+		// Map unique violation to ErrUserExists when constraint violated
 		return uuid.Nil, "", ErrUserExists
 	}
-	_ = time.Now()
 	return id, role, nil
 }
 
 func (s *AuthService) Authenticate(ctx context.Context, email, password string) (uuid.UUID, string, error) {
-	var id uuid.UUID
-	var pwHash string
-	var role string
-	q := `SELECT id, password_hash, role FROM users WHERE email = $1`
-	row := s.db.Pool.QueryRow(ctx, q, email)
-	if err := row.Scan(&id, &pwHash, &role); err != nil {
+	user, err := s.db.Queries.GetUserByEmail(ctx, email)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return uuid.Nil, "", ErrInvalidCredentials
 		}
 		return uuid.Nil, "", err
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(pwHash), []byte(password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		return uuid.Nil, "", ErrInvalidCredentials
 	}
-	return id, role, nil
+	return user.ID, user.Role, nil
 }

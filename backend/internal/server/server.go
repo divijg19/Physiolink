@@ -17,7 +17,8 @@ type Server struct {
 	httpServer *http.Server
 }
 
-func New(cfg *config.Config) *Server {
+// NewRouter builds and returns an http.Handler configured with all routes.
+func NewRouter(cfg *config.Config) http.Handler {
 	r := chi.NewRouter()
 	r.Use(stdmw.RequestID)
 	r.Use(stdmw.RealIP)
@@ -73,11 +74,15 @@ func New(cfg *config.Config) *Server {
 		})
 	})
 
+	return r
+}
+
+// New returns a Server that wraps the configured router and listens on cfg.BindAddr.
+func New(cfg *config.Config) *Server {
 	srv := &http.Server{
 		Addr:    cfg.BindAddr,
-		Handler: r,
+		Handler: NewRouter(cfg),
 	}
-
 	return &Server{httpServer: srv}
 }
 

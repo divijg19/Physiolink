@@ -1,0 +1,34 @@
+name: OpenAPI Validate
+
+on:
+    pull_request:
+        paths:
+            - "backend/openapi.yaml"
+            - "backend/internal/openapi/**"
+    push:
+        branches: [main, refactor]
+
+jobs:
+    validate:
+        name: Validate OpenAPI spec
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: backend
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+
+            - name: Setup Go, cache and install tools
+              uses: ./.github/actions/setup-go-cache
+              with:
+                  go-version: "1.25"
+                  install-oapi: "true"
+
+            - name: Run OpenAPI generation
+              run: |
+                  go generate ./internal/openapi/...
+
+            - name: Fail if generated files changed
+              run: |
+                  git diff --exit-code || (echo 'OpenAPI generated files are out of date. Run `go generate ./internal/openapi/...` and commit changes.' && exit 1)

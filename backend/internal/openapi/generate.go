@@ -1,7 +1,7 @@
 // Code generation entrypoint for OpenAPI -> Go
 package openapi
 
-//go:generate oapi-codegen -generate types,server -package openapi -o openapi.gen.go ../../openapi.yaml
+//go:generate oapi-codegen -generate types,chi-server -package openapi -o openapi.gen.go ../../openapi.yaml
 
 // The generated file `openapi.gen.go` will contain typed models and server interfaces
 // generated from `backend/go/openapi.yaml` using `oapi-codegen`.
