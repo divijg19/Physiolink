@@ -23,18 +23,21 @@ func InitReminders(s ReminderService) { reminderService = s }
 func GetMyReminders(w http.ResponseWriter, r *http.Request) {
 	sub, _ := r.Context().Value(middleware.UserIDKey).(string)
 	if sub == "" {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]string{"msg": "unauthorized"})
 		return
 	}
 	uid, err := uuid.Parse(sub)
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(map[string]string{"msg": "invalid user"})
 		return
 	}
 	list, err := reminderService.ListForPatient(r.Context(), uid)
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = json.NewEncoder(w).Encode(map[string]string{"msg": "Server Error"})
 		return

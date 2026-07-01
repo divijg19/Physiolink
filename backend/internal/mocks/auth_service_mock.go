@@ -15,8 +15,8 @@ type AuthServiceMock struct {
 	}
 }
 
-var ErrInvalidCredentials = errors.New("Invalid Credentials")
-var ErrUserExists = errors.New("User already exists")
+var ErrInvalidCredentials = errors.New("invalid credentials")
+var ErrUserExists = errors.New("user already exists")
 
 func NewAuthServiceMock() *AuthServiceMock {
 	return &AuthServiceMock{Users: make(map[string]struct {

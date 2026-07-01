@@ -5,7 +5,7 @@ on:
         paths:
             - "backend/**"
     push:
-        branches: [main, refactor]
+        branches: [main]
     workflow_dispatch: {}
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
             - name: Setup Go, cache and install tools
               uses: ./.github/actions/setup-go-cache
               with:
-                  go-version: "1.25"
+                  go-version: "1.26"
                   install-staticcheck: "true"
                   install-gotestsum: "true"
 
@@ -36,9 +36,17 @@ jobs:
               run: |
                   staticcheck ./...
 
+            - name: Verify go.sum integrity
+              run: |
+                  go mod verify
+
+            - name: Check compilation
+              run: |
+                  go build ./...
+
             - name: Run unit tests
               run: |
-                  gotestsum --junitfile unit-tests.xml -- -coverprofile=coverage.out ./...
+                  gotestsum --junitfile unit-tests.xml -- -race -coverprofile=coverage.out ./...
 
             - name: Upload test results
               if: always()

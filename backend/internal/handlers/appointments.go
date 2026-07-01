@@ -172,11 +172,11 @@ func UpdateAppointmentStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	updated, err := apptService.UpdateAppointmentStatus(r.Context(), apptID, ptID, req.Status)
 	if err != nil {
-		switch err.Error() {
-		case "forbidden":
+		if errors.Is(err, service.ErrForbidden) {
 			writeJSON(w, http.StatusForbidden, errorResponse{Msg: "Forbidden"})
 			return
-		case "invalid status":
+		}
+		if errors.Is(err, service.ErrInvalidStatus) {
 			writeJSON(w, http.StatusBadRequest, errorResponse{Msg: "Invalid status"})
 			return
 		}

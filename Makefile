@@ -5,7 +5,7 @@ all: run-backend
 
 # Run the Go Backend
 run-backend:
-	cd backend && go run cmd/api/main.go
+	cd backend && go run ./cmd/api
 
 # Run the Flutter Mobile App
 run-app:
@@ -26,4 +26,4 @@ generate:
 
 # Run Backend Tests
 test-backend:
-	cd backend && go test ./...
+	cd backend && go test -race ./...

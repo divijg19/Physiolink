@@ -7,11 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/divijg19/physiolink/backend/internal/config"
 	"github.com/divijg19/physiolink/backend/internal/handlers"
-	mocks "github.com/divijg19/physiolink/backend/tests/__mocks__"
+	mocks "github.com/divijg19/physiolink/backend/internal/mocks"
 )
 
 func TestRegister_ReturnsTokenAndProfile(t *testing.T) {

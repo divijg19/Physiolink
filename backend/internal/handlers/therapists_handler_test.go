@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/divijg19/physiolink/backend/internal/handlers"
-	mocks "github.com/divijg19/physiolink/backend/tests/__mocks__"
+	mocks "github.com/divijg19/physiolink/backend/internal/mocks"
 )
 
 func TestGetAllTherapists_OK(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/divijg19/physiolink/backend/internal/config"
 )
@@ -30,7 +30,7 @@ func JWTAuth(cfg *config.Config) func(http.Handler) http.Handler {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
-			token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+			token, err := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"})).Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 				return []byte(cfg.JWTSecret), nil
 			})
 			if err != nil || !token.Valid {
@@ -75,7 +75,7 @@ func CookieAuth(cfg *config.Config) func(http.Handler) http.Handler {
 				return
 			}
 			tokenStr := cookie.Value
-			token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+			token, err := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"})).Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 				return []byte(cfg.JWTSecret), nil
 			})
 			if err != nil || !token.Valid {
@@ -119,7 +119,7 @@ func OptionalCookieAuth(cfg *config.Config) func(http.Handler) http.Handler {
 				return
 			}
 			tokenStr := cookie.Value
-			token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+			token, err := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"})).Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 				return []byte(cfg.JWTSecret), nil
 			})
 			if err != nil || !token.Valid {

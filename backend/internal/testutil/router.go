@@ -19,7 +19,7 @@ func NewRouterWithServices(cfg *config.Config, database *db.DB, clk clock.Clock)
 	profileSvc := service.NewProfileService(database, cfg)
 	therapistSvc := service.NewTherapistService(database)
 	reviewSvc := service.NewReviewService(database)
-	reminderSvc := service.NewReminderService(database, clk)
+	reminderSvc := service.NewReminderService(database.Queries, clk)
 	apptSvc := service.NewAppointmentService(database, nil)
 
 	// register handlers

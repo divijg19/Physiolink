@@ -7,7 +7,7 @@ on:
       - "backend/internal/db/**"
       - "backend/sqlc.yaml"
   push:
-    branches: [main, refactor]
+    branches: [main]
 
 jobs:
   sqlc-validate:
@@ -18,12 +18,12 @@ jobs:
         working-directory: backend
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Go, cache and install tools
         uses: ./.github/actions/setup-go-cache
         with:
-          go-version: "1.25"
+          go-version: "1.26"
           install-sqlc: "true"
 
       - name: Run sqlc generate
