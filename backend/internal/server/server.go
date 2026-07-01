@@ -76,6 +76,10 @@ func NewRouter(cfg *config.Config) http.Handler {
 			r.Get("/reviews/{therapistId}", handlers.GetReviewsForTherapist)
 		})
 
+		// Public — therapist availability (no auth)
+		r.Get("/appointments/availability", handlers.GetTherapistAvailability)
+		r.Get("/appointments/availability/{ptId}", handlers.GetTherapistAvailability)
+
 		// profile
 		r.Group(func(r chi.Router) {
 			r.Use(mware.JWTAuth(cfg))
@@ -83,10 +87,8 @@ func NewRouter(cfg *config.Config) http.Handler {
 			r.Put("/profile/me", handlers.UpsertMyProfile)
 			r.Post("/profile", handlers.UpsertMyProfile)
 
-			// appointments
+			// appointments (protected)
 			r.Post("/appointments/availability", handlers.CreateAvailability)
-			r.Get("/appointments/availability", handlers.GetTherapistAvailability)        // supports ptId query
-			r.Get("/appointments/availability/{ptId}", handlers.GetTherapistAvailability) // supports path param
 			r.Get("/appointments/me", handlers.GetMyAppointments)
 			r.Put("/appointments/{id}/book", handlers.BookAppointment)
 			r.Put("/appointments/{id}/status", handlers.UpdateAppointmentStatus)
