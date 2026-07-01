@@ -1,16 +1,18 @@
-name: Backend CI - Unit
+name: Backend CI
 
 on:
     pull_request:
         paths:
             - "backend/**"
+            - ".github/actions/**"
+            - ".github/workflows/backend-ci.yml"
     push:
         branches: [main]
     workflow_dispatch: {}
 
 jobs:
     unit:
-        name: Unit + Lint
+        name: Unit tests, lint, vulncheck
         runs-on: ubuntu-latest
         defaults:
             run:
@@ -24,7 +26,6 @@ jobs:
             - name: Setup Go, cache and install tools
               uses: ./.github/actions/setup-go-cache
               with:
-                  go-version: "1.26"
                   install-staticcheck: "true"
                   install-gotestsum: "true"
 
@@ -40,13 +41,21 @@ jobs:
               run: |
                   go mod verify
 
+            - name: Install govulncheck
+              run: |
+                  go install golang.org/x/vuln/cmd/govulncheck@latest
+
+            - name: Scan for vulnerabilities
+              run: |
+                  govulncheck ./...
+
             - name: Check compilation
               run: |
                   go build ./...
 
             - name: Run unit tests
               run: |
-                  gotestsum --junitfile unit-tests.xml -- -race -coverprofile=coverage.out ./...
+                  gotestsum --junitfile unit-tests.xml -- -race -coverprofile=coverage.out $(go list ./... | grep -v /integration/)
 
             - name: Upload test results
               if: always()
@@ -56,3 +65,18 @@ jobs:
                   path: |
                       backend/unit-tests.xml
                       backend/coverage.out
+
+    docker:
+        name: Docker build
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: backend
+        steps:
+            - uses: actions/checkout@v6
+              with:
+                  fetch-depth: 1
+
+            - name: Build Docker image
+              run: |
+                  docker build -t physiolink-backend:ci .

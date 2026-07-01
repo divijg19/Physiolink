@@ -1,0 +1,60 @@
+name: Backend Codegen Validation
+
+on:
+    pull_request:
+        paths:
+            - "backend/openapi.yaml"
+            - "backend/internal/openapi/**"
+            - "backend/**/*.sql"
+            - "backend/internal/db/**"
+            - "backend/sqlc.yaml"
+            - ".github/actions/**"
+            - ".github/workflows/backend-codegen.yml"
+    push:
+        branches: [main]
+    workflow_dispatch: {}
+
+jobs:
+    openapi:
+        name: Validate OpenAPI spec
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: backend
+        steps:
+            - uses: actions/checkout@v6
+              with:
+                  fetch-depth: 1
+
+            - uses: ./.github/actions/setup-go-cache
+              with:
+                  install-oapi: "true"
+
+            - name: Generate OpenAPI code
+              run: go generate ./internal/openapi/...
+
+            - name: Fail if generated files changed
+              run: |
+                  git diff --exit-code || (echo 'OpenAPI generated files are out of date. Run `go generate ./internal/openapi/...` and commit changes.' && exit 1)
+
+    sqlc:
+        name: Validate sqlc generated code
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: backend
+        steps:
+            - uses: actions/checkout@v6
+              with:
+                  fetch-depth: 1
+
+            - uses: ./.github/actions/setup-go-cache
+              with:
+                  install-sqlc: "true"
+
+            - name: Generate sqlc code
+              run: sqlc generate
+
+            - name: Fail if generated files changed
+              run: |
+                  git diff --exit-code || (echo 'sqlc generated files are out of date. Run `sqlc generate` and commit changes.' && exit 1)
