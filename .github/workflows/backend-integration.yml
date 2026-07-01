@@ -4,11 +4,18 @@ on:
     pull_request:
         paths:
             - "backend/**"
+            - ".github/actions/**"
             - ".github/workflows/backend-integration.yml"
+    push:
+        branches: [main]
     workflow_dispatch: {}
+
+env:
+    DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
 
 jobs:
     integration:
+        name: Integration tests
         runs-on: ubuntu-latest
         services:
             postgres:
@@ -25,11 +32,12 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v6
+              with:
+                  fetch-depth: 1
 
             - name: Setup Go, cache and install tools
               uses: ./.github/actions/setup-go-cache
               with:
-                  go-version: "1.26"
                   install-gotestsum: "true"
 
             - name: Wait for Postgres
@@ -42,12 +50,9 @@ jobs:
 
             - name: Apply migrations
               run: |
-                  export DATABASE_URL="postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"
                   for f in migrations/*.sql; do psql "$DATABASE_URL" -f "$f"; done
 
             - name: Run integration tests
-              env:
-                  DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
               run: |
                   gotestsum --junitfile integration-tests.xml -- -race -coverprofile=integration-coverage.out ./integration -v
 

@@ -30,16 +30,8 @@ runs:
       uses: actions/setup-go@v6
       with:
         go-version: ${{ inputs.go-version }}
-
-    - name: Cache Go build and module cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/go-build
-          $HOME/go/pkg/mod
-        key: ${{ runner.os }}-go-mod-${{ hashFiles('backend/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-mod-
+        cache: true
+        cache-dependency-path: backend/go.sum
 
     - name: Ensure $GOBIN in PATH
       run: |
