@@ -40,9 +40,7 @@ func TestE2E_RegisterCreateAvailabilityBook(t *testing.T) {
 	}
 	defer database.Close()
 
-	// fixed time for deterministic reminders
-	fixed := time.Date(2025, 1, 1, 9, 0, 0, 0, time.UTC)
-	clk := clock.NewFake(fixed)
+	clk := clock.NewReal()
 
 	handler := testutil.NewRouterWithServices(cfg, database, clk)
 	ts := httptest.NewServer(handler)
