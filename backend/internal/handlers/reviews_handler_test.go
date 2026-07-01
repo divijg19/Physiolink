@@ -14,7 +14,7 @@ import (
 	"github.com/divijg19/physiolink/backend/internal/handlers"
 	"github.com/divijg19/physiolink/backend/internal/middleware"
 	"github.com/divijg19/physiolink/backend/internal/service"
-	"github.com/divijg19/physiolink/backend/tests/__mocks__"
+	"github.com/divijg19/physiolink/backend/internal/mocks"
 )
 
 func setupReviewsRouter(service *__mocks__.ReviewServiceMock) *chi.Mux {

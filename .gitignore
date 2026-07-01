@@ -15,6 +15,7 @@ backend/vendor/
 backend/*.exe
 backend/*.out
 backend/coverage.txt
+backend/staticcheck.conf.bak
 
 # Flutter/Dart (App & Web)
 .dart_tool/

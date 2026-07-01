@@ -39,7 +39,7 @@ func main() {
 	profileSvc := service.NewProfileService(database, cfg)
 	therapistSvc := service.NewTherapistService(database)
 	reviewSvc := service.NewReviewService(database)
-	reminderSvc := service.NewReminderService(database, clock.NewReal())
+	reminderSvc := service.NewReminderService(database.Queries, clock.NewReal())
 	// temporal client (optional in dev)
 	tcl, err := service.NewTemporalClient()
 	if err != nil {

@@ -1,0 +1,10 @@
+.git/
+.gitignore
+*.md
+*.bak
+*.exe
+*.out
+Dockerfile
+.dockerignore
+staticcheck.conf
+main.exe

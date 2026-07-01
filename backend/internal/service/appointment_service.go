@@ -16,7 +16,11 @@ import (
 )
 
 // ErrConflict is returned when attempting to book a slot that is no longer open.
-var ErrConflict = errors.New("conflict")
+var (
+	ErrConflict      = errors.New("conflict")
+	ErrForbidden     = errors.New("forbidden")
+	ErrInvalidStatus = errors.New("invalid status")
+)
 
 type AppointmentService struct {
 	db  *db.DB
@@ -202,7 +206,7 @@ func splitDisplayName(s string) (string, string) {
 func (s *AppointmentService) UpdateAppointmentStatus(ctx context.Context, appointmentID uuid.UUID, ptID uuid.UUID, status string) (AppointmentBrief, error) {
 	var out AppointmentBrief
 	if status != "confirmed" && status != "rejected" {
-		return out, errors.New("invalid status")
+		return out, ErrInvalidStatus
 	}
 
 	// ensure appointment exists and owned by pt
@@ -211,7 +215,7 @@ func (s *AppointmentService) UpdateAppointmentStatus(ctx context.Context, appoin
 		return out, err
 	}
 	if therapistID != ptID {
-		return out, errors.New("forbidden")
+		return out, ErrForbidden
 	}
 
 	// update status

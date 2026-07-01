@@ -6,7 +6,7 @@ on:
             - "backend/openapi.yaml"
             - "backend/internal/openapi/**"
     push:
-        branches: [main, refactor]
+        branches: [main]
 
 jobs:
     validate:
@@ -22,7 +22,7 @@ jobs:
             - name: Setup Go, cache and install tools
               uses: ./.github/actions/setup-go-cache
               with:
-                  go-version: "1.25"
+                  go-version: "1.26"
                   install-oapi: "true"
 
             - name: Run OpenAPI generation

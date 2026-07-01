@@ -10,13 +10,17 @@ import (
 	"github.com/divijg19/physiolink/backend/internal/db"
 )
 
+type reminderQueries interface {
+	GetUpcomingRemindersBefore(ctx context.Context, params db.GetUpcomingRemindersBeforeParams) ([]db.GetUpcomingRemindersBeforeRow, error)
+}
+
 type ReminderService struct {
-	db  *db.DB
+	q   reminderQueries
 	clk clock.Clock
 }
 
-func NewReminderService(d *db.DB, clk clock.Clock) *ReminderService {
-	return &ReminderService{db: d, clk: clk}
+func NewReminderService(q reminderQueries, clk clock.Clock) *ReminderService {
+	return &ReminderService{q: q, clk: clk}
 }
 
 type ReminderItem struct {
@@ -27,7 +31,7 @@ type ReminderItem struct {
 
 func (s *ReminderService) ListForPatient(ctx context.Context, patientID uuid.UUID) ([]ReminderItem, error) {
 	// use parameterized query so tests can control "now"
-	rows, err := s.db.Queries.GetUpcomingRemindersBefore(ctx, db.GetUpcomingRemindersBeforeParams{PatientID: patientID, ScheduledFor: s.clk.Now()})
+	rows, err := s.q.GetUpcomingRemindersBefore(ctx, db.GetUpcomingRemindersBeforeParams{PatientID: patientID, ScheduledFor: s.clk.Now()})
 	if err != nil {
 		return nil, err
 	}

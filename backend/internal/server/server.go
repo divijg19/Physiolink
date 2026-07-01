@@ -21,7 +21,6 @@ type Server struct {
 func NewRouter(cfg *config.Config) http.Handler {
 	r := chi.NewRouter()
 	r.Use(stdmw.RequestID)
-	r.Use(stdmw.RealIP)
 	r.Use(stdmw.Logger)
 	r.Use(stdmw.Recoverer)
 
@@ -106,8 +105,12 @@ func NewRouter(cfg *config.Config) http.Handler {
 // New returns a Server that wraps the configured router and listens on cfg.BindAddr.
 func New(cfg *config.Config) *Server {
 	srv := &http.Server{
-		Addr:    cfg.BindAddr,
-		Handler: NewRouter(cfg),
+		Addr:              cfg.BindAddr,
+		Handler:           NewRouter(cfg),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 	return &Server{httpServer: srv}
 }
@@ -117,7 +120,5 @@ func (s *Server) ListenAndServe() error {
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 	return s.httpServer.Shutdown(ctx)
 }
