@@ -1,0 +1,43 @@
+name: Web CI
+
+on:
+    pull_request:
+        paths:
+            - "web/**"
+            - ".github/actions/**"
+            - ".github/workflows/web-ci.yml"
+    push:
+        branches: [main]
+    workflow_dispatch: {}
+
+jobs:
+    build:
+        name: Analyze, build
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: web
+        steps:
+            - name: Checkout (shallow)
+              uses: actions/checkout@v6
+              with:
+                  fetch-depth: 1
+
+            - name: Setup Dart
+              uses: dart-lang/setup-dart@v1
+
+            - name: Install dependencies
+              run: |
+                  dart pub get
+
+            - name: Analyze
+              run: |
+                  dart analyze
+
+            - name: Install jaspr CLI
+              run: |
+                  dart pub global activate jaspr_cli@0.23.1
+
+            - name: Build
+              run: |
+                  dart pub global run jaspr_cli:jaspr build

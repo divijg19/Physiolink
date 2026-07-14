@@ -27,10 +27,12 @@ func NewRouter(cfg *config.Config) http.Handler {
 	// health
 	r.Get("/health", handlers.Health)
 
+	// Jaspr marketing SPA (unmatched routes go here)
+	r.NotFound(jasprSPAHandler().ServeHTTP)
+
 	// Public routes with optional auth (for navbar state)
 	r.Group(func(r chi.Router) {
 		r.Use(mware.OptionalCookieAuth(cfg))
-		r.Get("/", handlers.Home)
 		r.Get("/login", handlers.LoginPage)
 		r.Get("/register", handlers.RegisterPage)
 		r.Get("/therapists", handlers.TherapistsPage)
