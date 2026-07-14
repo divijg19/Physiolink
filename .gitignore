@@ -1,7 +1,6 @@
 # General
 .DS_Store
 .vscode/
-.idea/
 *.log
 *.pem
 
@@ -15,27 +14,49 @@ backend/vendor/
 backend/*.exe
 backend/*.out
 backend/coverage.txt
+backend/unit-tests.xml
 backend/staticcheck.conf.bak
 
-# Flutter/Dart (App & Web)
+# Flutter / Dart
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
+.packages
+**/doc/api/
 build/
 coverage/
+**/ios/Flutter/.last_build_id
+.swiftpm/
+app.*.symbols
+app.*.map.json
 
 # Android
-android/app/debug
-android/app/profile
-android/app/release
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
 *.jks
 *.keystore
 
 # iOS
-ios/Flutter/.last_build_id
 *.mobileprovision
 
-# Web
-web-build/
+# Editor / misc
+*.class
+*.pyc
+*.swp
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Embedded Jaspr SPA: only placeholder.txt is real; build output is ignored
+backend/internal/server/jaspr/*
+!backend/internal/server/jaspr/placeholder.txt
