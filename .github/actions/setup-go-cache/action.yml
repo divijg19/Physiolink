@@ -3,9 +3,9 @@ description: "Sets up Go, caches module/cache directories and optionally install
 author: GitHub Copilot
 inputs:
   go-version:
-    description: "Go version to install (e.g. 1.26)"
+    description: "Go version to install (e.g. 1.26.5)"
     required: false
-    default: "1.26"
+    default: "1.26.5"
   install-staticcheck:
     description: "Install staticcheck (true/false)"
     required: false
