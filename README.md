@@ -10,9 +10,9 @@ PhysioLink is a comprehensive physiotherapy management platform featuring a Go b
 
 ## Getting Started
 
-### Prerequisites
+### Development Prerequisites
 
-- Go 1.23+
+- Go 1.26
 - Flutter SDK
 - Docker & Docker Compose
 - Make (optional, for using the Makefile)
