@@ -13,8 +13,8 @@ import (
 
 	"github.com/divijg19/physiolink/backend/internal/handlers"
 	"github.com/divijg19/physiolink/backend/internal/middleware"
-	"github.com/divijg19/physiolink/backend/internal/service"
 	mocks "github.com/divijg19/physiolink/backend/internal/mocks"
+	"github.com/divijg19/physiolink/backend/internal/service"
 )
 
 func addChiURLParam(req *http.Request, key, val string) *http.Request {
