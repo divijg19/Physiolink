@@ -10,6 +10,12 @@ on:
         branches: [main]
     workflow_dispatch: {}
 
+concurrency:
+    group: web-ci-${{ github.head_ref || github.run_id }}
+    cancel-in-progress: true
+
+timeout-minutes: 60
+
 jobs:
     build:
         name: Analyze, build
@@ -18,13 +24,21 @@ jobs:
             run:
                 working-directory: web
         steps:
-            - name: Checkout (shallow)
-              uses: actions/checkout@v6
+            - uses: actions/checkout@v6
               with:
                   fetch-depth: 1
 
             - name: Setup Dart
               uses: dart-lang/setup-dart@v1
+
+            - name: Cache Dart pub
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.pub-cache
+                  key: ${{ runner.os }}-pub-${{ hashFiles("web/pubspec.lock") }}
+                  restore-keys: |
+                      ${{ runner.os }}-pub-
 
             - name: Install dependencies
               run: |

@@ -1,0 +1,63 @@
+name: "Go Setup"
+description: "Sets up Go with module caching and optional tool installation"
+
+inputs:
+  go-version:
+    description: "Go version to install (e.g. 1.26.x, defaults to latest patch)"
+    required: false
+    default: "1.26"
+  cache-dependency:
+    description: "Path to go.sum or go.mod for cache invalidation"
+    required: false
+    default: "backend/go.sum"
+  install-staticcheck:
+    description: "Install staticcheck (true/false)"
+    required: false
+    default: "false"
+  install-gotestsum:
+    description: "Install gotestsum (true/false)"
+    required: false
+    default: "false"
+  install-sqlc:
+    description: "Install sqlc (true/false)"
+    required: false
+    default: "false"
+  install-oapi:
+    description: "Install oapi-codegen (true/false)"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: true
+        cache-dependency-path: ${{ inputs.cache-dependency }}
+
+    - name: Ensure $GOBIN in PATH
+      run: |
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      shell: bash
+
+    - name: Install staticcheck
+      if: ${{ inputs.install-staticcheck == 'true' }}
+      run: go install honnef.co/go/tools/cmd/staticcheck@2026.1
+      shell: bash
+
+    - name: Install sqlc
+      if: ${{ inputs.install-sqlc == 'true' }}
+      run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+      shell: bash
+
+    - name: Install oapi-codegen
+      if: ${{ inputs.install-oapi == 'true' }}
+      run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@v1.16.3
+      shell: bash
+
+    - name: Install gotestsum
+      if: ${{ inputs.install-gotestsum == 'true' }}
+      run: go install gotest.tools/gotestsum@v1.13.0
+      shell: bash
