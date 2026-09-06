@@ -10,6 +10,12 @@ on:
         branches: [main]
     workflow_dispatch: {}
 
+concurrency:
+    group: backend-integration-${{ github.head_ref || github.run_id }}
+    cancel-in-progress: true
+
+timeout-minutes: 120
+
 env:
     DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
 
@@ -30,20 +36,16 @@ jobs:
             run:
                 working-directory: backend
         steps:
-            - name: Checkout
-              uses: actions/checkout@v6
+            - uses: actions/checkout@v6
               with:
                   fetch-depth: 1
 
-            - name: Setup Go, cache and install tools
-              uses: ./.github/actions/setup-go-cache
+            - uses: ./.github/workflows/go-setup
               with:
                   install-gotestsum: "true"
 
             - name: Wait for Postgres
               run: |
-                  sudo apt-get update -y
-                  sudo apt-get install -y postgresql-client
                   until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done
               env:
                   PGPASSWORD: postgres
