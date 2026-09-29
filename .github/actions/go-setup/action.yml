@@ -68,5 +68,5 @@ runs:
 
     - name: Install govulncheck
       if: ${{ inputs.install-govulncheck == 'true' }}
-      run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      run: go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
       shell: bash

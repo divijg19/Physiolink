@@ -1,15 +1,11 @@
 # Line-ending policy.
 #
 # Only file types where CRLF actively breaks a build or tool are pinned to LF.
-# The repository already contains ~160 CRLF files (mostly Flutter/Android/iOS
-# scaffold and SQL/docs), so those extensions are deliberately NOT pinned here:
-# adding a rule would renormalise them on the next checkout and bury real
-# changes in whole-file diffs. Fix those separately if desired.
-#
-# `* text=auto` alone lets git detect and normalise on commit without forcing
-# a specific EOL on files that are already stored as-is.
-
-* text=auto
+# The repository already contains ~160 CRLF files (Flutter/Android/iOS scaffold,
+# SQL and docs), and a blanket `* text=auto` would renormalise all of them in
+# the index on the next commit, turning every unrelated edit into a whole-file
+# diff. Those are therefore deliberately left unpinned here; migrating them is
+# a separate, explicit `git add --renormalize` change.
 
 # Go
 *.go   text eol=lf

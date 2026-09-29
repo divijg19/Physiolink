@@ -50,10 +50,10 @@ func TestSPAPrefixRouting(t *testing.T) {
 			wantBody:   `"msg"`,
 		},
 		{
-			name:       "unknown api path does not return HTML",
-			path:       "/api/does-not-exist",
+			name:       "bare /api is also a JSON 404",
+			path:       "/api",
 			wantStatus: http.StatusNotFound,
-			wantBody:   "<html",
+			wantBody:   `"msg"`,
 		},
 		{
 			name:       "unknown root path is a plain 404",
@@ -71,16 +71,29 @@ func TestSPAPrefixRouting(t *testing.T) {
 			if rec.Code != tc.wantStatus {
 				t.Fatalf("GET %s = %d, want %d (body: %.120q)", tc.path, rec.Code, tc.wantStatus, rec.Body.String())
 			}
-			if tc.wantBody == `<html` {
-				if strings.Contains(rec.Body.String(), "<html") {
-					t.Errorf("GET %s returned HTML for an API path; clients cannot parse it", tc.path)
-				}
-				return
-			}
 			if tc.wantBody != "" && !strings.Contains(rec.Body.String(), tc.wantBody) {
 				t.Errorf("GET %s body = %.200q, want it to contain %q", tc.path, rec.Body.String(), tc.wantBody)
 			}
 		})
+	}
+}
+
+// TestAPIErrorsAreJSONNotHTML guards the 404 body shape: a client that gets
+// index.html (or a text/plain body) for an API path cannot parse the error.
+func TestAPIErrorsAreJSONNotHTML(t *testing.T) {
+	router := NewRouter(&config.Config{JWTSecret: "test-secret"})
+
+	for _, path := range []string{"/api", "/api/", "/api/does-not-exist"} {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+
+		body := rec.Body.String()
+		if strings.Contains(strings.ToLower(body), "<html") {
+			t.Errorf("GET %s returned HTML to an API client: %.120q", path, body)
+		}
+		if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "application/json") {
+			t.Errorf("GET %s Content-Type = %q, want application/json", path, ct)
+		}
 	}
 }
 
@@ -90,15 +103,40 @@ func TestSPARedirectsToSlash(t *testing.T) {
 	cfg := &config.Config{JWTSecret: "test-secret-not-used-here"}
 	router := NewRouter(cfg)
 
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, spaPrefix, nil)
-	router.ServeHTTP(rec, req)
+	for _, from := range []string{spaPrefix, "/"} {
+		t.Run("from "+from, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, from, nil)
+			router.ServeHTTP(rec, req)
 
+			if rec.Code != http.StatusMovedPermanently {
+				t.Fatalf("GET %s = %d, want %d", from, rec.Code, http.StatusMovedPermanently)
+			}
+			if got := rec.Header().Get("Location"); got != spaPrefix+"/" {
+				t.Errorf("GET %s Location = %q, want %q", from, got, spaPrefix+"/")
+			}
+		})
+	}
+}
+
+// TestRootRedirectsToSPA guards the portal's own navigation: views/layout.templ
+// links to "/" twice (the wordmark and "Home"). Before /site was introduced the
+// SPA answered "/" as its NotFound fallback; after the split, "/" 404ed and
+// those links broke.
+func TestRootRedirectsToSPA(t *testing.T) {
+	router := NewRouter(&config.Config{JWTSecret: "test-secret"})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if rec.Code == http.StatusNotFound {
+		t.Fatal(`GET / returned 404; the SPA must be reachable and layout.templ links to "/"`)
+	}
 	if rec.Code != http.StatusMovedPermanently {
-		t.Fatalf("GET %s = %d, want %d", spaPrefix, rec.Code, http.StatusMovedPermanently)
+		t.Fatalf("GET / = %d, want %d", rec.Code, http.StatusMovedPermanently)
 	}
 	if got := rec.Header().Get("Location"); got != spaPrefix+"/" {
-		t.Errorf("Location = %q, want %q", got, spaPrefix+"/")
+		t.Errorf("GET / Location = %q, want %q", got, spaPrefix+"/")
 	}
 }
 

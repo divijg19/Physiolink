@@ -350,6 +350,9 @@ components:
           format: date-time
         status:
           type: string
+        therapistId:
+          type: string
+          description: Owning therapist. Present on availability slots.
         createdAt:
           type: string
           format: date-time

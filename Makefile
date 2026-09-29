@@ -16,7 +16,7 @@ build:
 
 # Unit tests only. Integration tests need a live Postgres; see test-integration.
 test-backend:
-	cd backend && go test -race $$(go list ./... | grep -v /integration/)
+	cd backend && go test -race $$(go list ./... | grep -v '/integration$')
 
 test: test-backend
 
