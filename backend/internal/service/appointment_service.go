@@ -69,7 +69,9 @@ func (s *AppointmentService) GetTherapistAvailability(ctx context.Context, thera
 	if err != nil {
 		return nil, err
 	}
-	var out []Slot
+	// Initialised non-nil so the JSON body is [] rather than null: the Flutter
+	// client does `response.data as List`, which throws on null.
+	out := make([]Slot, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, Slot{
 			ID:          r.ID,

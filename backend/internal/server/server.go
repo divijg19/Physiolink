@@ -35,6 +35,13 @@ func NewRouter(cfg *config.Config) http.Handler {
 
 	// Jaspr marketing SPA, mounted under /site. It is intentionally not the
 	// router's catch-all: the server-rendered portal owns the root routes.
+	//
+	// "/" redirects here rather than 404ing: before the /site mount it was the
+	// SPA's own NotFound fallback, and the portal layout still links to "/"
+	// (see views/layout.templ), so those links would otherwise be dead.
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, spaPrefix+"/", http.StatusMovedPermanently)
+	})
 	r.Get(spaPrefix, func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, spaPrefix+"/", http.StatusMovedPermanently)
 	})
@@ -119,7 +126,9 @@ func NewRouter(cfg *config.Config) http.Handler {
 // notFound answers unmatched routes. API paths get a JSON body so clients see
 // a real 404 instead of an HTML page, and everything else gets a plain 404.
 func notFound(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, "/api/") {
+	// Match "/api" as well as "/api/..." so a client that joins a base URL
+	// without the trailing slash still gets JSON.
+	if p := r.URL.Path; p == "/api" || strings.HasPrefix(p, "/api/") {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte(`{"msg":"not found"}`))

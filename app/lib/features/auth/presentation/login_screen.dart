@@ -24,10 +24,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
-      await ref.read(authControllerProvider.notifier).login(
-            _emailController.text.trim(),
-            _passwordController.text.trim(),
-          );
+      try {
+        await ref.read(authControllerProvider.notifier).login(
+              _emailController.text.trim(),
+              _passwordController.text.trim(),
+            );
+      } catch (_) {
+        // The controller records the failure in its state and rethrows so
+        // callers cannot mistake it for success. The ref.listen below already
+        // surfaces it, so swallow the rethrow here rather than letting it
+        // escape as an unhandled async error.
+      }
     }
   }
 

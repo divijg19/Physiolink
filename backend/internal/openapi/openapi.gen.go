@@ -28,7 +28,10 @@ type Appointment struct {
 	} `json:"pt,omitempty"`
 	StartTime *time.Time `json:"startTime,omitempty"`
 	Status    *string    `json:"status,omitempty"`
-	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+
+	// TherapistId Owning therapist. Present on availability slots.
+	TherapistId *string    `json:"therapistId,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 }
 
 // AuthResponse defines model for AuthResponse.

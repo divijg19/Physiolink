@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
+	"github.com/divijg19/physiolink/backend/internal/auth"
 	"github.com/divijg19/physiolink/backend/internal/config"
 	"github.com/divijg19/physiolink/backend/internal/service"
 )
@@ -43,6 +42,12 @@ func InitAuth(s AuthService, c *config.Config) {
 	cfg = c
 }
 
+// tokenIssuer builds an issuer from the package-level config. Every token in
+// the system is minted here so the claim shape has one definition.
+func tokenIssuer() *auth.Issuer {
+	return auth.NewIssuer(cfg.JWTSecret, auth.TTL)
+}
+
 func Register(w http.ResponseWriter, r *http.Request) {
 	var req authRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -59,15 +64,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Msg: "Server error"})
 		return
 	}
-	// create token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user": map[string]interface{}{
-			"id":   id.String(),
-			"role": role,
-		},
-		"exp": time.Now().Add(5 * time.Hour).Unix(),
-	})
-	signed, err := token.SignedString([]byte(cfg.JWTSecret))
+	signed, err := tokenIssuer().Issue(id, role)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Msg: "Server error"})
 		return
@@ -98,14 +95,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Msg: "Server error"})
 		return
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user": map[string]interface{}{
-			"id":   id.String(),
-			"role": role,
-		},
-		"exp": time.Now().Add(5 * time.Hour).Unix(),
-	})
-	signed, err := token.SignedString([]byte(cfg.JWTSecret))
+	signed, err := tokenIssuer().Issue(id, role)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Msg: "Server error"})
 		return
