@@ -47,7 +47,7 @@ jobs:
               run: |
                   set -euo pipefail
                   dart pub get
-                  dart pub global activate jaspr_cli 0.23.1
+                  dart pub global activate jaspr_cli 0.23.5
                   dart pub global run jaspr_cli:jaspr build
                   cp -r build/jaspr/. ../backend/internal/server/jaspr/
                   rm -rf ../backend/internal/server/jaspr/packages ../backend/internal/server/jaspr/.dart_tool
