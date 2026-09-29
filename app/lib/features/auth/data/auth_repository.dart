@@ -28,4 +28,19 @@ class AuthRepository {
       data: {'email': email, 'password': password, 'role': role},
     );
   }
+
+  /// Returns the signed-in user's email from `GET /profile/me`.
+  ///
+  /// The JWT intentionally carries only `user.id` and `user.role`, so that no
+  /// PII is baked into a token that may be logged or cached. The email has to
+  /// be read from the profile endpoint instead.
+  Future<String> fetchCurrentUserEmail() async {
+    final response = await _dio.get('/profile/me');
+    final data = response.data;
+    if (data is Map && data['user'] is Map) {
+      final email = (data['user'] as Map)['email'];
+      if (email is String) return email;
+    }
+    return '';
+  }
 }

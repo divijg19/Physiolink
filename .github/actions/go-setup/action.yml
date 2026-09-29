@@ -26,12 +26,16 @@ inputs:
     description: "Install oapi-codegen (true/false)"
     required: false
     default: "false"
+  install-govulncheck:
+    description: "Install govulncheck (true/false)"
+    required: false
+    default: "false"
 
 runs:
   using: "composite"
   steps:
     - name: Setup Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v7
       with:
         go-version: ${{ inputs.go-version }}
         cache: true
@@ -44,20 +48,25 @@ runs:
 
     - name: Install staticcheck
       if: ${{ inputs.install-staticcheck == 'true' }}
-      run: go install honnef.co/go/tools/cmd/staticcheck@2026.1
+      run: go install honnef.co/go/tools/cmd/staticcheck@2026.2.1
       shell: bash
 
     - name: Install sqlc
       if: ${{ inputs.install-sqlc == 'true' }}
-      run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+      run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
       shell: bash
 
     - name: Install oapi-codegen
       if: ${{ inputs.install-oapi == 'true' }}
-      run: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@v1.16.3
+      run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
       shell: bash
 
     - name: Install gotestsum
       if: ${{ inputs.install-gotestsum == 'true' }}
       run: go install gotest.tools/gotestsum@v1.13.0
+      shell: bash
+
+    - name: Install govulncheck
+      if: ${{ inputs.install-govulncheck == 'true' }}
+      run: go install golang.org/x/vuln/cmd/govulncheck@latest
       shell: bash

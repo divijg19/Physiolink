@@ -10,7 +10,7 @@ part of 'appointment_controller.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(myAppointments)
-const myAppointmentsProvider = MyAppointmentsProvider._();
+final myAppointmentsProvider = MyAppointmentsProvider._();
 
 final class MyAppointmentsProvider
     extends
@@ -22,7 +22,7 @@ final class MyAppointmentsProvider
     with
         $FutureModifier<List<Appointment>>,
         $FutureProvider<List<Appointment>> {
-  const MyAppointmentsProvider._()
+  MyAppointmentsProvider._()
     : super(
         from: null,
         argument: null,
@@ -51,7 +51,7 @@ final class MyAppointmentsProvider
 String _$myAppointmentsHash() => r'0bb408f0e3e4c636626c0ccca72d1c4d7bb72af1';
 
 @ProviderFor(therapistAvailability)
-const therapistAvailabilityProvider = TherapistAvailabilityFamily._();
+final therapistAvailabilityProvider = TherapistAvailabilityFamily._();
 
 final class TherapistAvailabilityProvider
     extends
@@ -63,7 +63,7 @@ final class TherapistAvailabilityProvider
     with
         $FutureModifier<List<Appointment>>,
         $FutureProvider<List<Appointment>> {
-  const TherapistAvailabilityProvider._({
+  TherapistAvailabilityProvider._({
     required TherapistAvailabilityFamily super.from,
     required String super.argument,
   }) : super(
@@ -112,7 +112,7 @@ String _$therapistAvailabilityHash() =>
 
 final class TherapistAvailabilityFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<List<Appointment>>, String> {
-  const TherapistAvailabilityFamily._()
+  TherapistAvailabilityFamily._()
     : super(
         retry: null,
         name: r'therapistAvailabilityProvider',
@@ -129,11 +129,11 @@ final class TherapistAvailabilityFamily extends $Family
 }
 
 @ProviderFor(AppointmentController)
-const appointmentControllerProvider = AppointmentControllerProvider._();
+final appointmentControllerProvider = AppointmentControllerProvider._();
 
 final class AppointmentControllerProvider
     extends $AsyncNotifierProvider<AppointmentController, void> {
-  const AppointmentControllerProvider._()
+  AppointmentControllerProvider._()
     : super(
         from: null,
         argument: null,
@@ -153,14 +153,13 @@ final class AppointmentControllerProvider
 }
 
 String _$appointmentControllerHash() =>
-    r'7cbf6a388e3297d4ee190d1e3f4cc50b294ddb3f';
+    r'e84783f79ea288e9a0265795484ee7dc2c33f2e2';
 
 abstract class _$AppointmentController extends $AsyncNotifier<void> {
   FutureOr<void> build();
   @$mustCallSuper
   @override
-  void runBuild() {
-    build();
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AsyncValue<void>, void>;
     final element =
         ref.element
@@ -170,6 +169,6 @@ abstract class _$AppointmentController extends $AsyncNotifier<void> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, null);
+    return element.handleCreate(ref, build);
   }
 }

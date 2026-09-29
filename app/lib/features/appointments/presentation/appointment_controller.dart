@@ -23,13 +23,21 @@ class AppointmentController extends _$AppointmentController {
     // no-op
   }
 
+  /// Books [slotId] and refreshes the caller's schedule.
+  ///
+  /// Errors are recorded in [state] *and* rethrown so the calling widget can
+  /// report the failure. Swallowing them here made the UI announce
+  /// "Appointment booked!" for bookings that never happened.
   Future<void> bookAppointment(String slotId) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    try {
       final repo = ref.read(appointmentRepositoryProvider);
       await repo.bookAppointment(slotId);
-      // Invalidate my appointments to refresh the list
       ref.invalidate(myAppointmentsProvider);
-    });
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
   }
 }

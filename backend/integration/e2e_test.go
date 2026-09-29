@@ -72,9 +72,23 @@ func TestE2E_RegisterCreateAvailabilityBook(t *testing.T) {
 		return out.Token
 	}
 
-	// register therapist and patient
-	thToken := register("therapist@example.com", "pass1234", "therapist")
-	ptToken := register("patient@example.com", "pass1234", "patient")
+	// Register a therapist and a patient. Emails are unique per run and the rows
+	// are removed afterwards, so the suite does not collide when it is re-run
+	// against a database that is not freshly provisioned.
+	//
+	// This is a plain defer, not t.Cleanup: deferred functions run LIFO, so this
+	// delete happens before the database.Close() defer registered above.
+	// t.Cleanup would run after the pool was already closed and silently leak.
+	thEmail := uniqueEmail("therapist")
+	ptEmail := uniqueEmail("patient")
+	thToken := register(thEmail, "pass1234", "pt")
+	ptToken := register(ptEmail, "pass1234", "patient")
+	defer func() {
+		if _, err := database.SQL.ExecContext(context.Background(),
+			`DELETE FROM users WHERE email = ANY($1)`, pgxTextArray(thEmail, ptEmail)); err != nil {
+			t.Errorf("cleanup users %q/%q: %v", thEmail, ptEmail, err)
+		}
+	}()
 
 	// decode therapist token to get id
 	parsed, _ := jwt.Parse(thToken, func(token *jwt.Token) (interface{}, error) { return []byte("testsecret"), nil })
@@ -107,7 +121,8 @@ func TestE2E_RegisterCreateAvailabilityBook(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp2.StatusCode)
 	}
 	var slots []struct {
-		ID string `json:"id"`
+		// service.Slot serialises its id as "_id" (see openapi.yaml Appointment).
+		ID string `json:"_id"`
 	}
 	if err := json.NewDecoder(resp2.Body).Decode(&slots); err != nil {
 		t.Fatalf("decode slots: %v", err)

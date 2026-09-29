@@ -10,7 +10,7 @@ part of 'therapist_controller.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(therapists)
-const therapistsProvider = TherapistsProvider._();
+final therapistsProvider = TherapistsProvider._();
 
 final class TherapistsProvider
     extends
@@ -20,7 +20,7 @@ final class TherapistsProvider
           FutureOr<List<Therapist>>
         >
     with $FutureModifier<List<Therapist>>, $FutureProvider<List<Therapist>> {
-  const TherapistsProvider._()
+  TherapistsProvider._()
     : super(
         from: null,
         argument: null,

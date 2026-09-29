@@ -1,11 +1,12 @@
 # Build stage
-FROM golang:1.26.5 AS builder
+FROM golang:1.26 AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o api ./cmd/api
-RUN CGO_ENABLED=0 GOOS=linux go build -o worker ./cmd/worker
+# -trimpath/-buildvcs=false keep the binary reproducible and free of local paths.
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags="-s -w" -o api ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags="-s -w" -o worker ./cmd/worker
 
 # Run stage
 FROM gcr.io/distroless/static-debian12

@@ -10,7 +10,7 @@ part of 'therapist_repository.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(therapistRepository)
-const therapistRepositoryProvider = TherapistRepositoryProvider._();
+final therapistRepositoryProvider = TherapistRepositoryProvider._();
 
 final class TherapistRepositoryProvider
     extends
@@ -20,7 +20,7 @@ final class TherapistRepositoryProvider
           TherapistRepository
         >
     with $Provider<TherapistRepository> {
-  const TherapistRepositoryProvider._()
+  TherapistRepositoryProvider._()
     : super(
         from: null,
         argument: null,
