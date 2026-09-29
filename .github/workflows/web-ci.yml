@@ -45,7 +45,7 @@ jobs:
               run: dart analyze --fatal-infos
 
             - name: Install jaspr CLI
-              run: dart pub global activate jaspr_cli 0.23.1
+              run: dart pub global activate jaspr_cli 0.23.5
 
             - name: Build
               run: dart pub global run jaspr_cli:jaspr build
