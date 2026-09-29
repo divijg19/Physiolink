@@ -10,7 +10,7 @@ part of 'appointment_repository.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(appointmentRepository)
-const appointmentRepositoryProvider = AppointmentRepositoryProvider._();
+final appointmentRepositoryProvider = AppointmentRepositoryProvider._();
 
 final class AppointmentRepositoryProvider
     extends
@@ -20,7 +20,7 @@ final class AppointmentRepositoryProvider
           AppointmentRepository
         >
     with $Provider<AppointmentRepository> {
-  const AppointmentRepositoryProvider._()
+  AppointmentRepositoryProvider._()
     : super(
         from: null,
         argument: null,

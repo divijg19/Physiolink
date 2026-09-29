@@ -1,6 +1,6 @@
 module github.com/divijg19/physiolink/backend
 
-go 1.26
+go 1.26.0
 
 require (
 	github.com/a-h/templ v0.3.1020
@@ -13,7 +13,7 @@ require (
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/sqlc-dev/pqtype v0.3.0
 	github.com/stretchr/testify v1.12.1
-	go.temporal.io/sdk v1.48.0
+	go.temporal.io/sdk v1.49.0
 	golang.org/x/crypto v0.57.0
 )
 

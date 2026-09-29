@@ -1,0 +1,39 @@
+# Line-ending policy.
+#
+# Only file types where CRLF actively breaks a build or tool are pinned to LF.
+# The repository already contains ~160 CRLF files (mostly Flutter/Android/iOS
+# scaffold and SQL/docs), so those extensions are deliberately NOT pinned here:
+# adding a rule would renormalise them on the next checkout and bury real
+# changes in whole-file diffs. Fix those separately if desired.
+#
+# `* text=auto` alone lets git detect and normalise on commit without forcing
+# a specific EOL on files that are already stored as-is.
+
+* text=auto
+
+# Go
+*.go   text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
+
+# Shell scripts
+*.sh   text eol=lf
+*.bash text eol=lf
+
+# Build files we own (already LF; pinned so they stay that way)
+Dockerfile   text eol=lf
+*.dockerfile text eol=lf
+Makefile     text eol=lf
+*.mk         text eol=lf
+
+# Never rewrite binary assets
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary

@@ -8,8 +8,10 @@ on:
             - "backend/**/*.sql"
             - "backend/internal/db/**"
             - "backend/sqlc.yaml"
+            - "backend/go.mod"
+            - "backend/go.sum"
             - ".github/actions/**"
-            - ".github/workflows/backend-codegen.yml"
+            - ".github/workflows/**"
     push:
         branches: [main]
     workflow_dispatch: {}
@@ -18,17 +20,22 @@ concurrency:
     group: backend-codegen-${{ github.head_ref || github.run_id }}
     cancel-in-progress: true
 
-timeout-minutes: 30
-
 jobs:
     openapi:
         name: Validate OpenAPI spec
         runs-on: ubuntu-latest
+        timeout-minutes: 30
         defaults:
             run:
                 working-directory: backend
         steps:
-            - uses: ./.github/workflows/go-setup
+            - name: Checkout (shallow)
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 1
+
+            - name: Setup Go, cache and install tools
+              uses: ./.github/actions/go-setup
               with:
                   install-oapi: "true"
 
@@ -37,16 +44,25 @@ jobs:
 
             - name: Fail if generated files changed
               run: |
+                  # Backticks render literally in the log; do not expand.
+                  # shellcheck disable=SC2016
                   git diff --exit-code || (echo 'OpenAPI generated files are out of date. Run `go generate ./internal/openapi/...` and commit changes.' && exit 1)
 
     sqlc:
         name: Validate sqlc generated code
         runs-on: ubuntu-latest
+        timeout-minutes: 30
         defaults:
             run:
                 working-directory: backend
         steps:
-            - uses: ./.github/workflows/go-setup
+            - name: Checkout (shallow)
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 1
+
+            - name: Setup Go, cache and install tools
+              uses: ./.github/actions/go-setup
               with:
                   install-sqlc: "true"
 
@@ -55,4 +71,6 @@ jobs:
 
             - name: Fail if generated files changed
               run: |
+                  # Backticks render literally in the log; do not expand.
+                  # shellcheck disable=SC2016
                   git diff --exit-code || (echo 'sqlc generated files are out of date. Run `sqlc generate` and commit changes.' && exit 1)

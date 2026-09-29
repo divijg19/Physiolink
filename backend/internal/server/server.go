@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -27,8 +28,17 @@ func NewRouter(cfg *config.Config) http.Handler {
 	// health
 	r.Get("/health", handlers.Health)
 
-	// Jaspr marketing SPA (unmatched routes go here)
-	r.NotFound(jasprSPAHandler().ServeHTTP)
+	// Unmatched routes must NOT fall through to the SPA: that returned
+	// index.html with a 200 for typos like /api/appointments, which mobile
+	// clients then failed to parse. Unknown /api paths get a JSON 404.
+	r.NotFound(notFound)
+
+	// Jaspr marketing SPA, mounted under /site. It is intentionally not the
+	// router's catch-all: the server-rendered portal owns the root routes.
+	r.Get(spaPrefix, func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, spaPrefix+"/", http.StatusMovedPermanently)
+	})
+	r.Handle(spaPrefix+"/*", jasprSPAHandler())
 
 	// Public routes with optional auth (for navbar state)
 	r.Group(func(r chi.Router) {
@@ -104,6 +114,18 @@ func NewRouter(cfg *config.Config) http.Handler {
 	})
 
 	return r
+}
+
+// notFound answers unmatched routes. API paths get a JSON body so clients see
+// a real 404 instead of an HTML page, and everything else gets a plain 404.
+func notFound(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/api/") {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"msg":"not found"}`))
+		return
+	}
+	http.NotFound(w, r)
 }
 
 // New returns a Server that wraps the configured router and listens on cfg.BindAddr.
