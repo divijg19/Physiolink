@@ -12,22 +12,24 @@ Production backend implemented in Go. The prior Node.js code has been removed.
 
 ## Quick start
 
+The compose file lives at the repository root, not here.
+
 1) Infra
-```powershell
-cd backend
-docker compose up -d
+```bash
+podman compose up -d
+make db-migrate
 ```
 
 2) API server
-```powershell
+```bash
 cd backend
-go run .\cmd\api
+go run ./cmd/api
 ```
 
 3) Worker (optional)
-```powershell
+```bash
 cd backend
-go run .\cmd\worker
+go run ./cmd/worker
 ```
 
 Health: http://localhost:8080/health
