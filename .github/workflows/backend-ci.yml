@@ -35,6 +35,23 @@ jobs:
                   install-gotestsum: "true"
                   install-govulncheck: "true"
 
+            - name: Setup Dart
+              uses: dart-lang/setup-dart@v1
+
+            - name: Build the embedded SPA
+              # The /site routing tests assert against the real build output.
+              # Without this step the embed directory holds only
+              # placeholder.txt, jasprSPAHandler() degrades to 404, and those
+              # tests skip - so the guard for the SPA mount never runs.
+              working-directory: web
+              run: |
+                  set -euo pipefail
+                  dart pub get
+                  dart pub global activate jaspr_cli 0.23.1
+                  dart pub global run jaspr_cli:jaspr build
+                  cp -r build/jaspr/. ../backend/internal/server/jaspr/
+                  rm -rf ../backend/internal/server/jaspr/packages ../backend/internal/server/jaspr/.dart_tool
+
             - name: Run go vet
               run: go vet ./...
 
@@ -58,7 +75,7 @@ jobs:
                   # Unquoted on purpose: the package list must split into
                   # separate arguments. Package paths contain no spaces.
                   # shellcheck disable=SC2046
-                  gotestsum --junitfile unit-tests.xml -- -race -coverprofile=coverage.out $(go list ./... | grep -v /integration/)
+                  gotestsum --junitfile unit-tests.xml -- -race -coverprofile=coverage.out $(go list ./... | grep -v '/integration$')
 
             - name: Upload test results
               if: always()

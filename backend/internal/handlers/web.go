@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/divijg19/physiolink/backend/internal/auth"
 	"github.com/divijg19/physiolink/backend/internal/middleware"
 	"github.com/divijg19/physiolink/backend/internal/service"
 	"github.com/divijg19/physiolink/backend/internal/views"
@@ -217,12 +218,26 @@ func PutProfileWeb(w http.ResponseWriter, r *http.Request) {
 	views.ProfileView(userIDStr, role).Render(r.Context(), w)
 }
 
+// setAuthCookie writes the session cookie. The expiry matches the token TTL
+// exactly: a cookie that outlives its token leaves the portal stuck in a
+// /login redirect loop with no way to refresh.
+func setAuthCookie(w http.ResponseWriter, signed string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    signed,
+		Expires:  time.Now().Add(auth.TTL),
+		MaxAge:   int(auth.TTL.Seconds()),
+		HttpOnly: true,
+		Path:     "/",
+	})
+}
+
 // Form handlers
 func LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
-	_, token, err := authService.Authenticate(r.Context(), email, password)
+	userID, role, err := authService.Authenticate(r.Context(), email, password)
 	if err != nil {
 		// In a real HTMX app, we'd return a partial with the error message
 		w.WriteHeader(http.StatusUnauthorized)
@@ -230,14 +245,16 @@ func LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth_token",
-		Value:    token,
-		Expires:  time.Now().Add(24 * time.Hour),
-		HttpOnly: true,
-		Path:     "/",
-	})
+	// Mint a real JWT. This used to store the *role* in the cookie, so
+	// CookieAuth could never parse it and every protected page redirected to
+	// /login forever.
+	signed, err := tokenIssuer().Issue(userID, role)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("<div class='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative' role='alert'>Error!</div>"))
+		return
+	}
+	setAuthCookie(w, signed)
 
 	// HTMX redirect via header
 	w.Header().Set("HX-Redirect", "/")
@@ -249,20 +266,20 @@ func RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	role := r.FormValue("role")
 
-	_, token, err := authService.Register(r.Context(), email, password, role)
+	userID, role, err := authService.Register(r.Context(), email, password, role)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("<div class='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative' role='alert'><strong class='font-bold'>Error!</strong> <span class='block sm:inline'>" + err.Error() + "</span></div>"))
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth_token",
-		Value:    token,
-		Expires:  time.Now().Add(24 * time.Hour),
-		HttpOnly: true,
-		Path:     "/",
-	})
+	signed, err := tokenIssuer().Issue(userID, role)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("<div class='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative' role='alert'>Error!</div>"))
+		return
+	}
+	setAuthCookie(w, signed)
 
 	w.Header().Set("HX-Redirect", "/")
 	w.WriteHeader(http.StatusOK)
