@@ -5,15 +5,28 @@ version: 0.0.1
 environment:
   sdk: '>=3.8.0 <4.0.0'
 
+# The jaspr packages are pinned exactly, and MUST be bumped together with the
+# `jaspr_cli` version that CI activates in web-ci.yml. jaspr_builder depends on
+# a specific jaspr version, so the two can never be split; pinning them here
+# stops the libraries floating to a newer patch while the CLI that compiles
+# them stays pinned and silently stale, which is what produced a 0.23.1 CLI
+# building 0.23.4 libraries.
+#
+# build_runner and build_web_compilers are held back from their latest on
+# purpose: jaspr_lints 0.7.2 is the newest release and requires
+# analyzer ^12.1.0, while build_runner >=2.15.2 and build_web_compilers >=4.8.6
+# both require analyzer >=13.3.0. Dropping jaspr_lints would unlock those, but
+# it is the only thing providing Jaspr-specific lints, so the trade is not
+# worth it. Revisit when jaspr_lints ships a wider analyzer constraint.
 dependencies:
-  jaspr: ^0.23.0
-  jaspr_router: ^0.8.0
+  jaspr: 0.23.5
+  jaspr_router: 0.9.0
 
 dev_dependencies:
-  jaspr_builder: ^0.23.0
-  build_runner: ^2.15.0
-  build_web_compilers: ^4.8.0
-  jaspr_lints: ^0.7.0
+  jaspr_builder: 0.23.5
+  build_runner: 2.15.1
+  build_web_compilers: 4.8.5
+  jaspr_lints: 0.7.2
 
 jaspr:
   mode: client

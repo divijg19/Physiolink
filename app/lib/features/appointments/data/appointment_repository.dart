@@ -27,8 +27,16 @@ class AppointmentRepository {
     return data.map((e) => Appointment.fromJson(e)).toList();
   }
 
-  Future<Appointment> bookAppointment(String slotId) async {
+  /// Books [slotId] and returns the id of the created appointment.
+  ///
+  /// The endpoint responds with `{"id": "<uuid>"}`, not a full [Appointment],
+  /// so this must not try to deserialise an [Appointment] from the body.
+  Future<String> bookAppointment(String slotId) async {
     final response = await _dio.put('/appointments/$slotId/book');
-    return Appointment.fromJson(response.data);
+    final data = response.data;
+    if (data is! Map || (data['id'] == null && data['_id'] == null)) {
+      throw StateError('Unexpected booking response: $data');
+    }
+    return (data['id'] ?? data['_id']) as String;
   }
 }

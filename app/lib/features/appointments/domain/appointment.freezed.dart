@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'appointment.dart';
@@ -9,6 +9,7 @@ part of 'appointment.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -28,16 +29,21 @@ $AppointmentCopyWith<Appointment> get copyWith => _$AppointmentCopyWithImpl<Appo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Appointment&&(identical(other.id, id) || other.id == id)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.endTime, endTime) || other.endTime == endTime)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.pt, pt)&&const DeepCollectionEquality().equals(other.patient, patient));
+  final _this = this as Appointment;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Appointment&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.startTime, _this.startTime) || other.startTime == _this.startTime)&&(identical(other.endTime, _this.endTime) || other.endTime == _this.endTime)&&(identical(other.status, _this.status) || other.status == _this.status)&&const DeepCollectionEquality().equals(other.pt, _this.pt)&&const DeepCollectionEquality().equals(other.patient, _this.patient));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,startTime,endTime,status,const DeepCollectionEquality().hash(pt),const DeepCollectionEquality().hash(patient));
+int get hashCode {
+  final _this = this as Appointment;
+  return Object.hash(runtimeType,_this.id,_this.startTime,_this.endTime,_this.status,const DeepCollectionEquality().hash(_this.pt),const DeepCollectionEquality().hash(_this.patient));
+}
 
 @override
 String toString() {
-  return 'Appointment(id: $id, startTime: $startTime, endTime: $endTime, status: $status, pt: $pt, patient: $patient)';
+  final _this = this as Appointment;
+  return 'Appointment(id: ${_this.id}, startTime: ${_this.startTime}, endTime: ${_this.endTime}, status: ${_this.status}, pt: ${_this.pt}, patient: ${_this.patient})';
 }
 
 
@@ -66,7 +72,7 @@ class _$AppointmentCopyWithImpl<$Res>
 /// Create a copy of Appointment
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? startTime = null,Object? endTime = null,Object? status = null,Object? pt = freezed,Object? patient = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(Appointment(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,startTime: null == startTime ? _self.startTime : startTime // ignore: cast_nullable_to_non_nullable
 as DateTime,endTime: null == endTime ? _self.endTime : endTime // ignore: cast_nullable_to_non_nullable
@@ -214,7 +220,7 @@ return $default(_that.id,_that.startTime,_that.endTime,_that.status,_that.pt,_th
 @JsonSerializable()
 
 class _Appointment implements Appointment {
-  const _Appointment({@JsonKey(name: '_id') required this.id, required this.startTime, required this.endTime, required this.status, final  Map<String, dynamic>? pt, final  Map<String, dynamic>? patient}): _pt = pt,_patient = patient;
+  const _Appointment({@JsonKey(name: '_id') required this.id, required this.startTime, required this.endTime, required this.status,  Map<String, dynamic>? pt,  Map<String, dynamic>? patient}): _pt = pt,_patient = patient;
   factory _Appointment.fromJson(Map<String, dynamic> json) => _$AppointmentFromJson(json);
 
 @override@JsonKey(name: '_id') final  String id;
@@ -253,16 +259,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Appointment&&(identical(other.id, id) || other.id == id)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.endTime, endTime) || other.endTime == endTime)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._pt, _pt)&&const DeepCollectionEquality().equals(other._patient, _patient));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Appointment&&(identical(other.id, id) || other.id == id)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.endTime, endTime) || other.endTime == endTime)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.pt, _pt)&&const DeepCollectionEquality().equals(other.patient, _patient));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,startTime,endTime,status,const DeepCollectionEquality().hash(_pt),const DeepCollectionEquality().hash(_patient));
+int get hashCode {
+    return Object.hash(runtimeType,id,startTime,endTime,status,const DeepCollectionEquality().hash(_pt),const DeepCollectionEquality().hash(_patient));
+}
 
 @override
 String toString() {
-  return 'Appointment(id: $id, startTime: $startTime, endTime: $endTime, status: $status, pt: $pt, patient: $patient)';
+    return 'Appointment(id: $id, startTime: $startTime, endTime: $endTime, status: $status, pt: $pt, patient: $patient)';
 }
 
 

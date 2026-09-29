@@ -1,0 +1,94 @@
+# Local development stack. Not a production topology: it ships weak default
+# credentials and publishes the database, Redis and admin UIs on the host.
+#
+# Run with:  podman compose up -d     (podman-compose is the provider)
+# The API/worker are not services here; run them with `make run-backend` so
+# they pick up .env and rebuild the embedded SPA on change.
+services:
+  postgres:
+    image: docker.io/library/postgres:15.19-bookworm
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-physiolink}
+    # Bound to loopback: this database has no TLS and default credentials.
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Migrations are deliberately NOT mounted into /docker-entrypoint-initdb.d.
+      # That directory only runs on first initialisation of an empty volume, so
+      # any migration added later is silently ignored on an existing pgdata; and
+      # the bind mount fails outright under rootless podman with
+      # "Permission denied" on /docker-entrypoint-initdb.d.
+      # Use `make db-migrate` instead, which applies every file with the same
+      # ON_ERROR_STOP + single-transaction semantics as CI.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-physiolink}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  redis:
+    image: docker.io/library/redis:7.4.11-alpine
+    # Not published at all: nothing in the codebase connects to Redis
+    # (REDIS_URL is read by config but never used). Expose it only if needed.
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  adminer:
+    # Unauthenticated database admin UI - development only, and behind a
+    # profile so it is not started by a plain `up`.
+    image: docker.io/library/adminer:6.1.1
+    profiles:
+      - debug
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  temporal:
+    # Was pinned to 1.22.3 (Dec 2023) while the Go SDK is on 1.49.0. Server
+    # and SDK share a wire protocol, so that skew is a source of intermittent
+    # workflow-task failures. Bumped to the current 1.29.x.
+    image: docker.io/temporalio/auto-setup:1.29.7
+    environment:
+      # Temporal 1.29 renamed the persistence driver: the old value
+      # "postgresql" is rejected outright ("Valid drivers are: mysql8,
+      # postgres12, postgres12_pgx, cassandra").
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD:-postgres}
+      # The host only, comma-separated for a cluster; the port comes from
+      # DB_PORT. The entrypoint does `nc -z "${POSTGRES_SEEDS%%,*}" "$DB_PORT"`,
+      # so anything with a colon here is parsed as a bad port.
+      POSTGRES_SEEDS: postgres
+    ports:
+      - "127.0.0.1:7233:7233"
+    # service_healthy, not just service_started: auto-setup races Postgres on
+    # first run and crash-loops without it.
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  temporal-ui:
+    image: docker.io/temporalio/ui:2.54.1
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "127.0.0.1:8082:8080"
+    depends_on:
+      - temporal
+
+volumes:
+  pgdata:

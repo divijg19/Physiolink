@@ -1,6 +1,10 @@
+plugins:
+  jaspr_lints: ^0.7.0
+
 analyzer:
-  plugins:
-    - custom_lint
+  exclude:
+    - build/**
+    - .dart_tool/**
 
 formatter:
   page_width: 120

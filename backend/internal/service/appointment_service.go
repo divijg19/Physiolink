@@ -31,12 +31,15 @@ func NewAppointmentService(d *db.DB, tcl client.Client) *AppointmentService {
 	return &AppointmentService{db: d, tcl: tcl}
 }
 
+// Slot is an open availability slot returned to clients. The JSON names match
+// the openapi.yaml Appointment schema (and the Flutter client's model), so the
+// field names must stay in sync with that schema.
 type Slot struct {
-	ID          uuid.UUID
-	TherapistID uuid.UUID
-	StartTs     string
-	EndTs       string
-	Status      string
+	ID          uuid.UUID `json:"_id"`
+	TherapistID uuid.UUID `json:"therapistId"`
+	StartTs     string    `json:"startTime"`
+	EndTs       string    `json:"endTime"`
+	Status      string    `json:"status"`
 }
 
 func (s *AppointmentService) CreateAvailability(ctx context.Context, therapistID uuid.UUID, slots []struct{ StartTs, EndTs string }) error {
@@ -66,7 +69,9 @@ func (s *AppointmentService) GetTherapistAvailability(ctx context.Context, thera
 	if err != nil {
 		return nil, err
 	}
-	var out []Slot
+	// Initialised non-nil so the JSON body is [] rather than null: the Flutter
+	// client does `response.data as List`, which throws on null.
+	out := make([]Slot, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, Slot{
 			ID:          r.ID,

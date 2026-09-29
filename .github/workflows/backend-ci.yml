@@ -5,7 +5,7 @@ on:
         paths:
             - "backend/**"
             - ".github/actions/**"
-            - ".github/workflows/backend-ci.yml"
+            - ".github/workflows/**"
     push:
         branches: [main]
     workflow_dispatch: {}
@@ -14,20 +14,43 @@ concurrency:
     group: backend-ci-${{ github.head_ref || github.run_id }}
     cancel-in-progress: true
 
-timeout-minutes: 60
-
 jobs:
     unit:
         name: Unit tests, lint, vulncheck
         runs-on: ubuntu-latest
+        timeout-minutes: 60
         defaults:
             run:
                 working-directory: backend
         steps:
-            - uses: ./.github/workflows/go-setup
+            - name: Checkout (shallow)
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 1
+
+            - name: Setup Go, cache and install tools
+              uses: ./.github/actions/go-setup
               with:
                   install-staticcheck: "true"
                   install-gotestsum: "true"
+                  install-govulncheck: "true"
+
+            - name: Setup Dart
+              uses: dart-lang/setup-dart@v1
+
+            - name: Build the embedded SPA
+              # The /site routing tests assert against the real build output.
+              # Without this step the embed directory holds only
+              # placeholder.txt, jasprSPAHandler() degrades to 404, and those
+              # tests skip - so the guard for the SPA mount never runs.
+              working-directory: web
+              run: |
+                  set -euo pipefail
+                  dart pub get
+                  dart pub global activate jaspr_cli 0.23.5
+                  dart pub global run jaspr_cli:jaspr build
+                  cp -r build/jaspr/. ../backend/internal/server/jaspr/
+                  rm -rf ../backend/internal/server/jaspr/packages ../backend/internal/server/jaspr/.dart_tool
 
             - name: Run go vet
               run: go vet ./...
@@ -38,42 +61,44 @@ jobs:
             - name: Verify go.sum integrity
               run: go mod verify
 
-            - name: Install govulncheck
-              run: go install golang.org/x/vuln/cmd/govulncheck@latest
-
             - name: Scan for vulnerabilities
-              run: govulncheck ./...
+              shell: bash
+              run: |
+                  set -o pipefail
+                  govulncheck ./... 2>&1 | tee govulncheck.txt
 
             - name: Check compilation
               run: go build ./...
 
             - name: Run unit tests
               run: |
-                  gotestsum --junitfile unit-tests.xml -- -race -coverprofile=coverage.out $(go list ./... | grep -v /integration/)
+                  # Unquoted on purpose: the package list must split into
+                  # separate arguments. Package paths contain no spaces.
+                  # shellcheck disable=SC2046
+                  gotestsum --junitfile unit-tests.xml -- -race -coverprofile=coverage.out $(go list ./... | grep -v '/integration$')
 
             - name: Upload test results
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: test-results
                   path: |
                       backend/unit-tests.xml
                       backend/coverage.out
-                      backend/govulncheck.out
+                      backend/govulncheck.txt
 
     docker:
         name: Docker build
         runs-on: ubuntu-latest
+        timeout-minutes: 60
         defaults:
             run:
                 working-directory: backend
         steps:
-            - uses: actions/checkout@v6
+            - name: Checkout (shallow)
+              uses: actions/checkout@v7
               with:
                   fetch-depth: 1
 
-            - uses: ./.github/workflows/go-setup
-
             - name: Build Docker image
-              run: |
-                  docker build -t physiolink-backend:ci .
+              run: docker build -t physiolink-backend:ci .

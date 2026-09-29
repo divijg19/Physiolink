@@ -10,11 +10,11 @@ part of 'auth_controller.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(AuthController)
-const authControllerProvider = AuthControllerProvider._();
+final authControllerProvider = AuthControllerProvider._();
 
 final class AuthControllerProvider
     extends $AsyncNotifierProvider<AuthController, User?> {
-  const AuthControllerProvider._()
+  AuthControllerProvider._()
     : super(
         from: null,
         argument: null,
@@ -33,14 +33,13 @@ final class AuthControllerProvider
   AuthController create() => AuthController();
 }
 
-String _$authControllerHash() => r'83e023761cfe429a2a4c2f65f10a3b41c9b8981c';
+String _$authControllerHash() => r'b8747da7dc4533fa5fc92147287b05827735c785';
 
 abstract class _$AuthController extends $AsyncNotifier<User?> {
   FutureOr<User?> build();
   @$mustCallSuper
   @override
-  void runBuild() {
-    final created = build();
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AsyncValue<User?>, User?>;
     final element =
         ref.element
@@ -50,6 +49,6 @@ abstract class _$AuthController extends $AsyncNotifier<User?> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, created);
+    return element.handleCreate(ref, build);
   }
 }

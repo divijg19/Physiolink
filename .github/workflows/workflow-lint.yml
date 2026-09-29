@@ -1,0 +1,36 @@
+name: Workflow Lint
+
+on:
+    pull_request:
+        paths:
+            - ".github/**"
+            - "backend/go.mod"
+            - "backend/go.sum"
+    push:
+        branches: [main]
+    workflow_dispatch: {}
+
+concurrency:
+    group: workflow-lint-${{ github.head_ref || github.run_id }}
+    cancel-in-progress: true
+
+jobs:
+    actionlint:
+        name: actionlint
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Checkout (shallow)
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 1
+
+            # Catches invalid workflow schema, which GitHub reports only as
+            # "This run likely failed because of a workflow file issue" with
+            # zero jobs - no step output, nothing to grep. A top-level
+            # `timeout-minutes` (valid only per job) broke all five workflows
+            # that way, and nothing else in the pipeline would have noticed.
+            - name: Lint workflows
+              uses: docker://rhysd/actionlint:1.7.7
+              with:
+                  args: -color

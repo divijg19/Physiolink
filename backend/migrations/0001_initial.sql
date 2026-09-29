@@ -1,5 +1,7 @@
 -- Initial schema for Physiolink
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- gen_random_uuid() is built into PostgreSQL 13+, so pgcrypto is not required.
+-- Do not add CREATE EXTENSION pgcrypto here: it needs superuser and would abort
+-- the whole migration on managed Postgres (RDS/Cloud SQL/Neon) under --single-transaction.
 
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

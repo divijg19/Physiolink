@@ -5,7 +5,7 @@ on:
         paths:
             - "backend/**"
             - ".github/actions/**"
-            - ".github/workflows/backend-integration.yml"
+            - ".github/workflows/**"
     push:
         branches: [main]
     workflow_dispatch: {}
@@ -14,8 +14,6 @@ concurrency:
     group: backend-integration-${{ github.head_ref || github.run_id }}
     cancel-in-progress: true
 
-timeout-minutes: 120
-
 env:
     DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
 
@@ -23,6 +21,7 @@ jobs:
     integration:
         name: Integration tests
         runs-on: ubuntu-latest
+        timeout-minutes: 120
         services:
             postgres:
                 image: postgres:15
@@ -36,23 +35,33 @@ jobs:
             run:
                 working-directory: backend
         steps:
-            - uses: actions/checkout@v6
+            - name: Checkout (shallow)
+              uses: actions/checkout@v7
               with:
                   fetch-depth: 1
 
-            - uses: ./.github/workflows/go-setup
+            - name: Setup Go, cache and install tools
+              uses: ./.github/actions/go-setup
               with:
                   install-gotestsum: "true"
 
             - name: Wait for Postgres
+              shell: bash
               run: |
+                  set -euo pipefail
                   until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done
               env:
                   PGPASSWORD: postgres
 
             - name: Apply migrations
+              shell: bash
               run: |
-                  for f in migrations/*.sql; do psql "$DATABASE_URL" -f "$f"; done
+                  set -euo pipefail
+                  for f in migrations/*.sql; do
+                      echo "::group::applying $f"
+                      psql -v ON_ERROR_STOP=1 --single-transaction "$DATABASE_URL" -f "$f"
+                      echo "::endgroup::"
+                  done
 
             - name: Run integration tests
               run: |
@@ -60,7 +69,7 @@ jobs:
 
             - name: Upload test results
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: integration-test-results
                   path: |
