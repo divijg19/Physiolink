@@ -1,57 +1,94 @@
 # PhysioLink
 
-PhysioLink is a comprehensive physiotherapy management platform featuring a Go backend, a Flutter mobile app, and a Jaspr web portal.
+PhysiLink is a physiotherapy platform: a Go backend serving a JSON API, a
+server-rendered web portal, and an embedded marketing site, plus a Flutter
+mobile app.
 
 ## Project Structure
 
-- **`backend/`**: Go API, Database (PostgreSQL), and Admin Portal (Templ/HTMX).
-- **`app/`**: Flutter Mobile Application (iOS/Android).
-- **`web/`**: Public Landing Page built with Jaspr (Dart for Web).
+| Path      | Contents                                                                   |
+| --------- | -------------------------------------------------------------------------- |
+| `backend/`| Go API (chi), PostgreSQL via pgx, and the Templ/HTMX portal.                  |
+| `app/`    | Flutter mobile client (iOS/Android/web).                                     |
+| `web/`    | Jaspr marketing SPA, embedded into the Go binary and served under `/site`.   |
 
-## Getting Started
+## Prerequisites
 
-### Development Prerequisites
+- Go 1.26.x
+- Flutter SDK (stable)
+- Dart SDK (comes with Flutter)
+- Podman + `podman compose` (or Docker)
+- `make`
 
-- Go 1.26
-- Flutter SDK
-- Docker & Docker Compose
-- Make (optional, for using the Makefile)
+Code generation additionally needs these on `PATH`, or run `make doctor`:
 
-### Running the Project
-
-You can use the provided `Makefile` to run different parts of the application.
-
-**Run the Backend:**
-```bash
-make run-backend
 ```
-*Runs on http://localhost:8080*
-
-**Run the Mobile App:**
-```bash
-make run-app
+go install github.com/a-h/templ/cmd/templ@latest
+go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
+dart pub global activate jaspr_cli 0.23.5
 ```
 
-**Run the Web Portal:**
+`jaspr` and `templ` must be on `PATH`; the jaspr CLI lives in
+`~/.pub-cache/bin`, which is not always on `PATH`.
+
+## Getting started
+
 ```bash
-make run-web
+cp .env.example .env      # then set JWT_SECRET
+podman compose up -d      # Postgres, Redis, Temporal, Temporal UI
+make db-migrate           # apply migrations (see note below)
 ```
-*Runs on http://localhost:8081 (default Jaspr port)*
+
+Migrations are **not** applied automatically by the container. Postgres only
+runs `/docker-entrypoint-initdb.d` on first initialisation of an empty volume,
+so anything added later would be silently ignored. Use `make db-migrate`, which
+applies each file with the same `ON_ERROR_STOP` + single-transaction semantics
+as CI.
+
+### Running the app
+
+```bash
+make run-backend     # http://localhost:8080
+make run-app         # Flutter app
+```
+
+The marketing SPA is embedded at build time, so it must be built before the
+backend serves it:
+
+```bash
+make build-web       # builds web/ and copies it into the embed directory
+```
+
+Without that, `/site` returns 404 and the backend still builds - the embed
+directory just contains a `placeholder.txt` sentinel. The Temporal worker is
+run separately with `cd backend && go run ./cmd/worker`; it is not part of the
+compose stack.
 
 ## Development
 
-### Code Generation
-
-To regenerate code for Templ, SQLC, OpenAPI, and Flutter/Riverpod:
-
 ```bash
-make generate
+make check           # vet, staticcheck, build, tests, govulncheck
+make generate        # templ, sqlc, openapi, the SPA, and app codegen
+make clean           # remove generated build output
 ```
 
-### Testing
+`make check` mirrors the CI gate. `make generate` must stay in sync with
+`.github/workflows/backend-codegen.yml`, which fails CI when committed
+generated code drifts.
 
-Run backend tests:
+### Layout note
 
-```bash
-make test-backend
-```
+The portal owns `/`; the marketing SPA is mounted at `/site` and `/` redirects
+to it. The two front ends previously collided - the SPA was the router's
+catch-all and shadowed the portal's own routes.
+
+## CI
+
+| Workflow                    | Covers                                              |
+| --------------------------- | --------------------------------------------------- |
+| `backend-ci`                | vet, staticcheck, govulncheck, build, unit tests, embedded SPA, Docker build |
+| `backend-codegen`           | sqlc and OpenAPI generated-code drift               |
+| `backend-integration`       | integration tests against a real Postgres            |
+| `web-ci`                    | `dart analyze` and the Jaspr build                   |
+| `app-ci`                    | codegen drift, `flutter analyze`, tests, web build  |
