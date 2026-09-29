@@ -44,9 +44,9 @@ void main() {
       expect(user.email, isEmpty);
     });
 
-    test('does not silently downgrade to patient when role is absent', () {
-      // A missing role means "unknown", which callers must not mistake for a
-      // real patient account.
+    test('falls back to the patient role when the claim is absent', () {
+      // Documented fallback: a token without a role claim yields "patient".
+      // The id must still be read correctly from the nested claim.
       final user = userFromTokenClaims({'user': {'id': 'u-4'}});
 
       expect(user.id, 'u-4');
