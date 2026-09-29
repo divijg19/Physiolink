@@ -1,4 +1,4 @@
-.PHONY: all check lint vet vuln build test test-backend test-integration \
+.PHONY: all check lint vet vuln build test test-backend test-integration db-migrate \
         generate build-web run-backend run-app run-web clean
 
 # Default target: verify everything (matches the CI gate).
@@ -23,6 +23,15 @@ test: test-backend
 # Requires DATABASE_URL to point at a Postgres with the migrations applied.
 test-integration:
 	cd backend && go test -race -v ./integration
+
+# Apply every migration in order with the same strict semantics CI uses.
+# Each file runs in its own transaction and aborts on the first error, so a
+# broken migration is loud instead of half-applied.
+db-migrate:
+	@for f in backend/migrations/*.sql; do \
+		echo "applying $$f"; \
+		psql -v ON_ERROR_STOP=1 --single-transaction "$$DATABASE_URL" -f "$$f" || exit 1; \
+	done
 
 vuln:
 	cd backend && govulncheck ./...
