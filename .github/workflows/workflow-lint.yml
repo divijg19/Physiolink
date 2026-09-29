@@ -1,9 +1,18 @@
-name: Workflow Lint
+name: CI Config Lint
 
+# Deliberately broad: this is the one workflow that must run when CI or repo
+# infrastructure changes, because every other workflow has a paths filter and
+# would otherwise silently not run at all. A PR touching only compose.yaml or
+# the Makefile previously triggered zero checks, which left it unverifiable.
 on:
     pull_request:
         paths:
             - ".github/**"
+            - "compose.yaml"
+            - "docker-compose.yml"
+            - "docker-compose.*.yml"
+            - "Makefile"
+            - "backend/Dockerfile"
             - "backend/go.mod"
             - "backend/go.sum"
     push:
@@ -11,7 +20,7 @@ on:
     workflow_dispatch: {}
 
 concurrency:
-    group: workflow-lint-${{ github.head_ref || github.run_id }}
+    group: ci-config-lint-${{ github.head_ref || github.run_id }}
     cancel-in-progress: true
 
 jobs:
@@ -34,3 +43,33 @@ jobs:
               uses: docker://rhysd/actionlint:1.7.7
               with:
                   args: -color
+
+    compose:
+        name: compose config
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Checkout (shallow)
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 1
+
+            # Only present on branches that carry the compose stack.
+            - name: Validate compose file
+              if: ${{ hashFiles('compose.yaml', 'docker-compose.yml') != '' }}
+              run: docker compose config --quiet
+
+    makefile:
+        name: make targets
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Checkout (shallow)
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 1
+
+            # `make doctor` exits non-zero on a missing tool, and parses every
+            # target, so a malformed Makefile fails here rather than silently.
+            - name: Parse Makefile
+              run: make -n doctor >/dev/null
